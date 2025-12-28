@@ -1,0 +1,11 @@
+# Include necessary files
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include pytest_gxp *.py
+recursive-include pytest_gxp py.typed
+
+# Exclude documentation from package
+global-exclude docs
+prune docs
+

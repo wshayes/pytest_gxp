@@ -1,0 +1,62 @@
+{
+  "generated_at": "2025-12-28T09:43:53.444904",
+  "evidence_count": 4,
+  "evidence": [
+    {
+      "id": "EV-0001",
+      "type": "command_output",
+      "description": "Python version verification",
+      "file_path": "evidence/command_output_20251228_094353_ac1ce905.png",
+      "timestamp": "2025-12-28T09:43:53.284173",
+      "test_id": "test_example.py::test_python_version_requirement",
+      "requirement_ids": [
+        "IS-001"
+      ],
+      "thumbnail_path": "evidence/thumbnails/thumb_command_output_20251228_094353_ac1ce905.png",
+      "metadata": {}
+    },
+    {
+      "id": "EV-0002",
+      "type": "command_output",
+      "description": "Required packages verification",
+      "file_path": "evidence/command_output_20251228_094353_47c0d555.png",
+      "timestamp": "2025-12-28T09:43:53.289179",
+      "test_id": "test_example.py::test_required_packages_installed",
+      "requirement_ids": [
+        "IS-001"
+      ],
+      "thumbnail_path": "evidence/thumbnails/thumb_command_output_20251228_094353_47c0d555.png",
+      "metadata": {}
+    },
+    {
+      "id": "EV-0003",
+      "type": "directory_listing",
+      "description": "Specification files directory",
+      "file_path": "evidence/directory_listing_20251228_094353_55bf5af9.png",
+      "timestamp": "2025-12-28T09:43:53.330940",
+      "test_id": "test_example.py::test_plugin_imports",
+      "requirement_ids": [
+        "IS-003"
+      ],
+      "thumbnail_path": "evidence/thumbnails/thumb_directory_listing_20251228_094353_55bf5af9.png",
+      "metadata": {
+        "directory_path": "/Users/william/code/pytest_gxp/examples/gxp_spec_files"
+      }
+    },
+    {
+      "id": "EV-0004",
+      "type": "directory_listing",
+      "description": "Report files directory",
+      "file_path": "evidence/directory_listing_20251228_094353_4ee83414.png",
+      "timestamp": "2025-12-28T09:43:53.438940",
+      "test_id": "test_example.py::test_specification_parser_initialization",
+      "requirement_ids": [
+        "IS-003"
+      ],
+      "thumbnail_path": "evidence/thumbnails/thumb_directory_listing_20251228_094353_4ee83414.png",
+      "metadata": {
+        "directory_path": "/Users/william/code/pytest_gxp/examples/gxp_report_files"
+      }
+    }
+  ]
+}

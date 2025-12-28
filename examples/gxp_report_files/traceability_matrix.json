@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "title": "Traceability Matrix",
+    "project": "Example Application",
+    "generated_date": "2025-12-28T09:43:54.178386",
+    "version": "1.0"
+  },
+  "coverage": {
+    "total_requirements": 10,
+    "requirements_with_tests": 10,
+    "requirements_without_tests": 0,
+    "requirement_coverage_rate": 100.0,
+    "requirements_verified": 5,
+    "requirement_verification_rate": 50.0,
+    "covered_requirements": 5,
+    "coverage_percentage": 50.0,
+    "uncovered_requirements": [],
+    "unverified_requirements": [
+      "DS-001",
+      "DS-002",
+      "DS-003",
+      "FS-003",
+      "FS-004"
+    ]
+  },
+  "matrix": [
+    {
+      "Test Case ID": "TEST-FS-001",
+      "Test Case Title": "Test FS-001: User Login Functionality",
+      "Requirement ID": "FS-001",
+      "Requirement Title": "User Login Functionality",
+      "Specification Type": "Functional",
+      "User Requirement ID": "",
+      "Status": "PASSED"
+    },
+    {
+      "Test Case ID": "TEST-FS-002",
+      "Test Case Title": "Test FS-002: Input Data Validation",
+      "Requirement ID": "FS-002",
+      "Requirement Title": "Input Data Validation",
+      "Specification Type": "Functional",
+      "User Requirement ID": "",
+      "Status": "PASSED"
+    },
+    {
+      "Test Case ID": "TEST-FS-003",
+      "Test Case Title": "Test FS-003: Audit Logging",
+      "Requirement ID": "FS-003",
+      "Requirement Title": "Audit Logging",
+      "Specification Type": "Functional",
+      "User Requirement ID": "",
+      "Status": "Not Executed"
+    },
+    {
+      "Test Case ID": "TEST-FS-004",
+      "Test Case Title": "Test FS-004: User Profile Management",
+      "Requirement ID": "FS-004",
+      "Requirement Title": "User Profile Management",
+      "Specification Type": "Functional",
+      "User Requirement ID": "",
+      "Status": "Not Executed"
+    },
+    {
+      "Test Case ID": "TEST-DS-001",
+      "Test Case Title": "Test DS-001: User Authentication System",
+      "Requirement ID": "DS-001",
+      "Requirement Title": "User Authentication System",
+      "Specification Type": "Design",
+      "User Requirement ID": "",
+      "Status": "Not Executed"
+    },
+    {
+      "Test Case ID": "TEST-DS-002",
+      "Test Case Title": "Test DS-002: Data Validation",
+      "Requirement ID": "DS-002",
+      "Requirement Title": "Data Validation",
+      "Specification Type": "Design",
+      "User Requirement ID": "",
+      "Status": "Not Executed"
+    },
+    {
+      "Test Case ID": "TEST-DS-003",
+      "Test Case Title": "Test DS-003: Audit Trail",
+      "Requirement ID": "DS-003",
+      "Requirement Title": "Audit Trail",
+      "Specification Type": "Design",
+      "User Requirement ID": "",
+      "Status": "Not Executed"
+    },
+    {
+      "Test Case ID": "TEST-IS-001",
+      "Test Case Title": "Test IS-001: System Requirements Verification",
+      "Requirement ID": "IS-001",
+      "Requirement Title": "System Requirements Verification",
+      "Specification Type": "Installation",
+      "User Requirement ID": "",
+      "Status": "PASSED"
+    },
+    {
+      "Test Case ID": "TEST-IS-002",
+      "Test Case Title": "Test IS-002: Application Installation",
+      "Requirement ID": "IS-002",
+      "Requirement Title": "Application Installation",
+      "Specification Type": "Installation",
+      "User Requirement ID": "",
+      "Status": "PASSED"
+    },
+    {
+      "Test Case ID": "TEST-IS-003",
+      "Test Case Title": "Test IS-003: Configuration Verification",
+      "Requirement ID": "IS-003",
+      "Requirement Title": "Configuration Verification",
+      "Specification Type": "Installation",
+      "User Requirement ID": "",
+      "Status": "PASSED"
+    }
+  ]
+}

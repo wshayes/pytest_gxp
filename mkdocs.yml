@@ -1,0 +1,98 @@
+site_name: Pytest GxP Plugin
+site_description: Pytest plugin for GAMP5 GxP CSV validation with requirements, tests, and traceability matrix
+site_url: https://wshayes.github.io/pytest_gxp
+repo_url: https://github.com/wshayes/pytest_gxp
+repo_name: wshayes/pytest_gxp
+
+# Exclude files from navigation
+exclude_docs: |
+  DEPLOYMENT.md
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+
+# Include example files in documentation
+extra_javascript:
+  - https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js
+
+# Allow serving of non-markdown files
+extra_css: []
+
+plugins:
+  - search
+  # Git revision date plugin disabled to avoid warnings
+  # If you want to enable it, uncomment below and install: mkdocs-git-revision-date-localized-plugin
+  # - git-revision-date-localized:
+  #     enable_creation_date: false
+  #     enable_git_follow: false
+  #     type: date
+  #     fallback_to_build_date: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quick-start.md
+      - Configuration: getting-started/configuration.md
+  - User Guide:
+      - Specification Format: user-guide/specification-format.md
+      - Running Tests: user-guide/running-tests.md
+      - CLI Tools: user-guide/cli-tools.md
+      - Reports: user-guide/reports.md
+      - Traceability Format: user-guide/traceability-format.md
+      - CSV Report Format: user-guide/csv-report-format.md
+  - Examples:
+      - Overview: examples/overview.md
+      - Design Spec: examples/design-spec.md
+      - Functional Spec: examples/functional-spec.md
+      - User Spec: examples/user-spec.md
+      - Installation Spec: examples/installation-spec.md
+      - Traceability Matrix: examples/traceability-example.md
+      - CSV Validation Report: examples/csv-validation-report-example.md
+  - API Reference:
+      - Parser: api/parser.md
+      - Generator: api/generator.md
+      - Traceability: api/traceability.md
+      - Reports: api/reports.md
+      - Evidence: api/evidence.md
+  - Contributing: contributing.md

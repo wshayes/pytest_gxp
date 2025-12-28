@@ -1,0 +1,119 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytest-gxp"
+version = "0.1.0"
+description = "Pytest plugin for GAMP5 GxP CSV validation with requirements, tests, and traceability matrix"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "William Hayes", email = "william.s.hayes@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: Pytest",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "click>=8.1.8",
+    "pytest>=7.0.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0.0",
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
+    "pymdown-extensions>=10.0",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+]
+pdf = [
+    "weasyprint>=60.0",
+    "markdown>=3.4",
+]
+evidence = [
+    "Pillow>=9.0.0",
+]
+all = [
+    "weasyprint>=60.0",
+    "markdown>=3.4",
+    "Pillow>=9.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wshayes/pytest_gxp"
+Repository = "https://github.com/wshayes/pytest_gxp"
+Issues = "https://github.com/wshayes/pytest_gxp/issues"
+
+[project.entry-points.pytest11]
+gxp = "pytest_gxp.plugin"
+
+[project.scripts]
+gxp_test_stubs = "pytest_gxp.cli.test_stubs:main"
+gxp_req_coverage = "pytest_gxp.cli.req_coverage:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pytest_gxp*"]
+
+[tool.setuptools.package-data]
+pytest_gxp = ["py.typed"]
+
+[tool.pytest.ini_options]
+markers = [
+    "gxp: mark test as GxP validation test",
+    "requirements: mark test with requirement IDs",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+# Enable import sorting
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+# Configure import sorting
+known-first-party = ["pytest_gxp"]
+
+[tool.ruff.format]
+# Enable auto-formatting (replaces Black)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "markdown>=3.7",
+    "pillow>=10.4.0",
+    "weasyprint>=61.2",
+]
+

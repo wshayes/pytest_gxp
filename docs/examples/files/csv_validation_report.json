@@ -1,0 +1,90 @@
+{
+  "report_metadata": {
+    "title": "CSV Validation Summary Report",
+    "generated_date": "2024-01-15T10:30:00",
+    "version": "1.0"
+  },
+  "specifications": {
+    "design_spec": {
+      "title": "Design Specification",
+      "version": "1.0",
+      "requirement_count": 3
+    },
+    "functional_spec": {
+      "title": "Functional Specification",
+      "version": "1.0",
+      "requirement_count": 4
+    },
+    "user_spec": {
+      "title": "User Specification",
+      "version": "1.0",
+      "requirement_count": 3
+    }
+  },
+  "test_summary": {
+    "total_test_cases": 7,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "not_executed": 1,
+    "pass_rate": 85.7
+  },
+  "coverage": {
+    "total_requirements": 7,
+    "covered_requirements": 6,
+    "coverage_percentage": 85.7,
+    "uncovered_requirements": ["FS-004"]
+  },
+  "test_cases": [
+    {
+      "id": "TEST-FS-001",
+      "title": "Test FS-001: User Login Functionality",
+      "requirements": ["FS-001"],
+      "status": "PASSED",
+      "spec_type": "Functional"
+    },
+    {
+      "id": "TEST-FS-002",
+      "title": "Test FS-002: Input Data Validation",
+      "requirements": ["FS-002"],
+      "status": "PASSED",
+      "spec_type": "Functional"
+    },
+    {
+      "id": "TEST-FS-003",
+      "title": "Test FS-003: Audit Logging",
+      "requirements": ["FS-003"],
+      "status": "PASSED",
+      "spec_type": "Functional"
+    },
+    {
+      "id": "TEST-FS-004",
+      "title": "Test FS-004: User Profile Management",
+      "requirements": ["FS-004"],
+      "status": "Not Executed",
+      "spec_type": "Functional"
+    },
+    {
+      "id": "TEST-DS-001",
+      "title": "Test DS-001: User Authentication System",
+      "requirements": ["DS-001"],
+      "status": "PASSED",
+      "spec_type": "Design"
+    },
+    {
+      "id": "TEST-DS-002",
+      "title": "Test DS-002: Data Validation",
+      "requirements": ["DS-002"],
+      "status": "PASSED",
+      "spec_type": "Design"
+    },
+    {
+      "id": "TEST-DS-003",
+      "title": "Test DS-003: Audit Trail",
+      "requirements": ["DS-003"],
+      "status": "PASSED",
+      "spec_type": "Design"
+    }
+  ]
+}
+

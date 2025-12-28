@@ -1,0 +1,11 @@
+Test Case ID,Title,Requirements,Specification Type,Status
+TEST-FS-001,Test FS-001: User Login Functionality,FS-001,Functional,PASSED
+TEST-FS-002,Test FS-002: Input Data Validation,FS-002,Functional,PASSED
+TEST-FS-003,Test FS-003: Audit Logging,FS-003,Functional,Not Executed
+TEST-FS-004,Test FS-004: User Profile Management,FS-004,Functional,Not Executed
+TEST-DS-001,Test DS-001: User Authentication System,DS-001,Design,Not Executed
+TEST-DS-002,Test DS-002: Data Validation,DS-002,Design,Not Executed
+TEST-DS-003,Test DS-003: Audit Trail,DS-003,Design,Not Executed
+TEST-IS-001,Test IS-001: System Requirements Verification,IS-001,Installation,PASSED
+TEST-IS-002,Test IS-002: Application Installation,IS-002,Installation,PASSED
+TEST-IS-003,Test IS-003: Configuration Verification,IS-003,Installation,PASSED

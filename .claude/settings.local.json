@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(ruff check:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(ls:*)",
+      "Bash(uv run gxp_req_coverage:*)",
+      "Bash(uv run:*)",
+      "Bash(uv pip install:*)"
+    ]
+  }
+}
