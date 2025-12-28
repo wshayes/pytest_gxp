@@ -41,13 +41,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install mkdocs-material mkdocs-git-revision-date-localized-plugin pymdown-extensions
+          uv pip install --system mkdocs-material mkdocs-git-revision-date-localized-plugin pymdown-extensions
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Build documentation
-        run: uv run mkdocs build
+        run: mkdocs build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
