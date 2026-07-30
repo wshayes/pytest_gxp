@@ -29,6 +29,18 @@ class EvidenceType(Enum):
     DIRECTORY_LISTING = "directory_listing"
     COMMAND_OUTPUT = "command_output"
     IMAGE = "image"
+    UNSCRIPTED_SESSION = "unscripted_session"
+
+
+# Evidence types whose stored file is an image and can be rendered inline in reports
+IMAGE_EVIDENCE_TYPES = frozenset(
+    {
+        EvidenceType.SCREENSHOT,
+        EvidenceType.DIRECTORY_LISTING,
+        EvidenceType.COMMAND_OUTPUT,
+        EvidenceType.IMAGE,
+    }
+)
 
 
 @dataclass
@@ -72,6 +84,21 @@ class ValidationMetadata:
     tester: Optional["ApprovalSignature"] = None
     reviewer: Optional["ApprovalSignature"] = None
     approver: Optional["ApprovalSignature"] = None
+
+
+@dataclass(frozen=True)
+class ValidationFinding:
+    """A defect in the validation inputs (specifications, markers, evidence).
+
+    ``code`` is a stable kebab-case identifier, e.g. ``duplicate-requirement-id``,
+    ``malformed-requirement-heading``, ``unknown-requirement-ref``,
+    ``uncovered-requirement``.
+    """
+
+    code: str
+    severity: str  # "error" | "warning"
+    message: str
+    location: str = ""  # "file.md:21" or a pytest nodeid
 
 
 @dataclass
@@ -124,6 +151,9 @@ class Specification:
 
 # Markdown format patterns
 REQUIREMENT_PATTERN = r"^###?\s+(?P<id>[A-Z]+-\d+)\s*:\s*(?P<title>.+)$"
+# Matches anything that looks like it was meant to be a requirement heading; a line
+# matching this but not REQUIREMENT_PATTERN is reported as malformed instead of parsed.
+REQUIREMENT_HEADING_LOOSE_PATTERN = r"^###?\s+(?P<id>[A-Z]{2,}-\d+)\b"
 REQUIREMENT_DESCRIPTION_PATTERN = r"^####?\s+Description\s*$"
 METADATA_PATTERN = r"^####?\s+Metadata\s*$"
 SPEC_HEADER_PATTERN = r"^#\s+(?P<title>.+)\s*$"

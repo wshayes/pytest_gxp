@@ -1,7 +1,9 @@
 """Tests for objective evidence capture functionality."""
 
+import hashlib
 import json
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -161,9 +163,7 @@ class TestCaptureCommandOutput:
     def test_capture_with_command_metadata(self, collector):
         """Test capturing command output with command in metadata."""
         collector.set_current_test("test_module::test_cmd", [])
-        item = collector.capture_command_output(
-            "output", "Test", command="ls -la"
-        )
+        item = collector.capture_command_output("output", "Test", command="ls -la")
 
         assert item.metadata.get("command") == "ls -la"
 
@@ -245,6 +245,83 @@ class TestEvidenceManifest:
         assert manifest["evidence"][0]["id"] == "EV-0001"
         assert manifest["evidence"][0]["type"] == "screenshot"
 
+    def test_manifest_hashes_the_stored_bytes(self, collector, evidence_dir):
+        """Each manifest entry binds to the sha256 of the file as stored."""
+        png_data = _create_minimal_png()
+        collector.set_current_test("test1", ["FS-001"])
+        collector.capture_screenshot(png_data, "Screenshot 1")
+
+        entry = json.loads(collector.write_manifest().read_text())["evidence"][0]
+
+        stored = (evidence_dir / entry["file_path"]).read_bytes()
+        assert entry["sha256"] == hashlib.sha256(stored).hexdigest()
+        assert entry["sha256"] == hashlib.sha256(png_data).hexdigest()
+
+
+class TestUnscriptedSession:
+    """Tests for recording unscripted (exploratory) testing sessions."""
+
+    def _record(self, collector):
+        collector.set_current_test("tests/test_explore.py::test_session", ["FS-001"])
+        return collector.record_unscripted_session(
+            charter="Explore the login flow for unexpected states",
+            tester="A. Tester",
+            duration_minutes=45,
+            observations=["Password field accepts 300 characters", "No lockout after 10 tries"],
+            defects=["DEF-2026-003"],
+        )
+
+    def test_writes_side_car_json(self, collector, evidence_dir):
+        """The session record is written as JSON with every FRM-CSA-05 field."""
+        item = self._record(collector)
+
+        assert item.evidence_type == EvidenceType.UNSCRIPTED_SESSION
+        assert item.file_path.startswith("evidence/unscripted_session_")
+        assert item.file_path.endswith(".json")
+
+        session = json.loads((evidence_dir / item.file_path).read_text())
+        assert session["charter"] == "Explore the login flow for unexpected states"
+        assert session["tester"] == "A. Tester"
+        assert session["duration_minutes"] == 45
+        assert len(session["observations"]) == 2
+        assert session["defects"] == ["DEF-2026-003"]
+        assert (
+            datetime.fromisoformat(session["recorded_at"].replace("Z", "+00:00")).tzinfo is not None
+        )
+
+    def test_associated_to_test_and_requirements(self, collector):
+        """The evidence item is attributed to the current test like any other capture."""
+        item = self._record(collector)
+
+        assert item.test_id == "tests/test_explore.py::test_session"
+        assert item.requirement_ids == ["FS-001"]
+        assert item.metadata["charter"].startswith("Explore")
+        assert item.metadata["defects"] == ["DEF-2026-003"]
+        assert collector.get_evidence_for_test("tests/test_explore.py::test_session") == [item]
+
+    def test_manifest_entry_has_matching_hash(self, collector, evidence_dir):
+        """The session record is hashed into the manifest like image evidence."""
+        item = self._record(collector)
+
+        entry = json.loads(collector.write_manifest().read_text())["evidence"][0]
+
+        assert entry["type"] == "unscripted_session"
+        expected = hashlib.sha256((evidence_dir / item.file_path).read_bytes()).hexdigest()
+        assert entry["sha256"] == expected
+
+    def test_defects_default_to_empty(self, collector, evidence_dir):
+        """Optional arguments are optional: no Pillow, no defects, no description."""
+        item = collector.record_unscripted_session(
+            charter="Poke at the report generator",
+            tester="A. Tester",
+            duration_minutes=10,
+            observations=["Nothing unexpected"],
+        )
+
+        session = json.loads((evidence_dir / item.file_path).read_text())
+        assert session["defects"] == []
+        assert item.description == "Poke at the report generator"
+
 
 @pytest.mark.skipif(not PILLOW_AVAILABLE, reason="Pillow not installed")
 class TestTextToImage:
@@ -296,17 +373,79 @@ class TestDirectoryListingToImage:
 def _create_minimal_png():
     """Create a minimal valid PNG file (1x1 white pixel)."""
     # This is a minimal valid PNG - 1x1 white pixel
-    return bytes([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
-        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  # IHDR chunk
-        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,  # 1x1 dimensions
-        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-        0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,  # IDAT chunk
-        0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
-        0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
-        0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,  # IEND chunk
-        0x44, 0xAE, 0x42, 0x60, 0x82,
-    ])
+    return bytes(
+        [
+            0x89,
+            0x50,
+            0x4E,
+            0x47,
+            0x0D,
+            0x0A,
+            0x1A,
+            0x0A,  # PNG signature
+            0x00,
+            0x00,
+            0x00,
+            0x0D,
+            0x49,
+            0x48,
+            0x44,
+            0x52,  # IHDR chunk
+            0x00,
+            0x00,
+            0x00,
+            0x01,
+            0x00,
+            0x00,
+            0x00,
+            0x01,  # 1x1 dimensions
+            0x08,
+            0x02,
+            0x00,
+            0x00,
+            0x00,
+            0x90,
+            0x77,
+            0x53,
+            0xDE,
+            0x00,
+            0x00,
+            0x00,
+            0x0C,
+            0x49,
+            0x44,
+            0x41,  # IDAT chunk
+            0x54,
+            0x08,
+            0xD7,
+            0x63,
+            0xF8,
+            0xFF,
+            0xFF,
+            0x3F,
+            0x00,
+            0x05,
+            0xFE,
+            0x02,
+            0xFE,
+            0xDC,
+            0xCC,
+            0x59,
+            0xE7,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x49,
+            0x45,
+            0x4E,  # IEND chunk
+            0x44,
+            0xAE,
+            0x42,
+            0x60,
+            0x82,
+        ]
+    )
 
 
 class TestEvidenceTypes:

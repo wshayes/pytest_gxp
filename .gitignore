@@ -206,3 +206,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Tool qualification run records (regenerated per run; archived from CI artifacts)
+tq_evidence.jsonl
+tq_environment.json
+tq_console.log
+tq_pip_freeze.txt
+validation_notes/
+tq_evidence.jsonl
+tq_environment.json
+tq_console.log
+tq_pip_freeze.txt

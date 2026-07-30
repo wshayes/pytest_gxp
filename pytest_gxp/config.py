@@ -22,6 +22,18 @@ class GxPConfig:
     software_version: str = ""
     project_name: str = ""
     strict_coverage: bool = False
+    strict: bool = False
+
+    # Path to a JSON map of {nodeid-or-requirement-id: deviation ref}
+    deviations: str = ""
+
+    # Output/evidence fields
+    output_formats: str = "csv,json,md,pdf"
+    evidence_thumbnails: bool = True
+
+    # Source provenance overrides (empty = derive from git)
+    source_commit: str = ""
+    source_tag: str = ""
 
     # Approval fields
     tester_name: str = ""
@@ -30,6 +42,14 @@ class GxPConfig:
     reviewer_date: str = ""
     approver_name: str = ""
     approver_date: str = ""
+
+
+# Fields whose ini values arrive as strings and must be coerced to bool
+_BOOLEAN_FIELDS = frozenset({"strict_coverage", "strict", "evidence_thumbnails"})
+
+# Fields only ever set by a ``store_true`` CLI option: a ``False`` from the CLI layer
+# means "flag not passed", not an override of an ini/pyproject value.
+_CLI_STORE_TRUE_FIELDS = frozenset({"strict_coverage", "strict"})
 
 
 def load_config_from_pyproject(root_path: Path) -> Dict[str, Any]:
@@ -72,6 +92,12 @@ def load_config_from_ini(config) -> Dict[str, Any]:
         ("gxp_software_version", "software_version"),
         ("gxp_project_name", "project_name"),
         ("gxp_strict_coverage", "strict_coverage"),
+        ("gxp_strict", "strict"),
+        ("gxp_deviations", "deviations"),
+        ("gxp_output_formats", "output_formats"),
+        ("gxp_evidence_thumbnails", "evidence_thumbnails"),
+        ("gxp_source_commit", "source_commit"),
+        ("gxp_source_tag", "source_tag"),
         ("gxp_tester_name", "tester_name"),
         ("gxp_tester_date", "tester_date"),
         ("gxp_reviewer_name", "reviewer_name"),
@@ -84,8 +110,7 @@ def load_config_from_ini(config) -> Dict[str, Any]:
         try:
             value = config.getini(ini_name)
             if value:
-                # Handle boolean conversion for strict_coverage
-                if config_key == "strict_coverage":
+                if config_key in _BOOLEAN_FIELDS:
                     if isinstance(value, str):
                         result[config_key] = value.lower() in ("true", "1", "yes")
                     else:
@@ -130,6 +155,12 @@ def merge_config(
         "software-version": "software_version",
         "project-name": "project_name",
         "strict-coverage": "strict_coverage",
+        "strict": "strict",
+        "deviations": "deviations",
+        "output-formats": "output_formats",
+        "evidence-thumbnails": "evidence_thumbnails",
+        "source-commit": "source_commit",
+        "source-tag": "source_tag",
         "tester-name": "tester_name",
         "tester-date": "tester_date",
         "reviewer-name": "reviewer_name",
@@ -146,7 +177,7 @@ def merge_config(
 
     # Apply ini config (lowest priority of the three)
     for key, value in ini_config.items():
-        if value is not None and value != "":
+        if hasattr(config, key) and value is not None and value != "":
             setattr(config, key, value)
 
     # Apply pyproject config (medium priority)
@@ -156,7 +187,10 @@ def merge_config(
 
     # Apply CLI options (highest priority)
     for key, value in cli_options.items():
-        if hasattr(config, key) and value is not None and value != "":
-            setattr(config, key, value)
+        if not hasattr(config, key) or value is None or value == "":
+            continue
+        if value is False and key in _CLI_STORE_TRUE_FIELDS:
+            continue
+        setattr(config, key, value)
 
     return config

@@ -1,0 +1,98 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: uv pip install --system -e ".[all,dev]"
+
+      - name: Lint
+        run: |
+          ruff check pytest_gxp tests tool_qualification
+          ruff format --check pytest_gxp tests tool_qualification
+
+      - name: Unit tests
+        run: pytest tests/ -q
+
+  tool-qualification:
+    name: Tool qualification (TQ-001)
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # WeasyPrint renders the report PDF through these native libraries.
+      - name: Install PDF rendering libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0
+
+      # The suite is qualified against a built wheel, not the working tree, so
+      # TQ-1.2's content hash covers the artefact a user would install.
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Install from the built wheel
+        run: |
+          wheel=$(ls dist/*.whl)
+          python -m pip install "${wheel}[pdf]"
+
+      - name: Record the version under qualification
+        run: |
+          echo "TQ_PINNED_VERSION=$(python -c 'import pytest_gxp; print(pytest_gxp.__version__)')" >> "$GITHUB_ENV"
+
+      # shell: bash sets pipefail, without which `tee` would swallow a failing
+      # exit status and the gate would pass silently.
+      - name: Qualification gate
+        shell: bash
+        env:
+          TZ: UTC
+        run: |
+          pytest -c tool_qualification/pytest.ini tool_qualification/ \
+            -m "not gap" -v --tb=short | tee tq_console.log
+
+      # Gap cases record an expected outcome rather than a pass/fail result, so
+      # they are informational. There are none at present.
+      - name: Gap assessment (informational)
+        if: always()
+        env:
+          TZ: UTC
+        run: |
+          pytest -c tool_qualification/pytest.ini tool_qualification/ \
+            -m gap -v --tb=short || true
+
+      - name: Upload qualification records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tool-qualification-records
+          path: |
+            tq_console.log
+            tq_evidence.jsonl
+            tq_environment.json
+          if-no-files-found: warn

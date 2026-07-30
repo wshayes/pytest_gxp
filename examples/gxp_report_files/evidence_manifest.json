@@ -1,44 +1,47 @@
 {
-  "generated_at": "2025-12-28T09:43:53.444904",
+  "generated_at": "2026-07-29T23:57:18Z",
   "evidence_count": 4,
   "evidence": [
     {
       "id": "EV-0001",
       "type": "command_output",
       "description": "Python version verification",
-      "file_path": "evidence/command_output_20251228_094353_ac1ce905.png",
-      "timestamp": "2025-12-28T09:43:53.284173",
+      "file_path": "evidence/command_output_20260729T235718Z_4b068fdd.png",
+      "sha256": "984b3342f2cdf99e801ee1ea566759b2bbb1b0d3380f0552ff859db3b4b8e4d6",
+      "timestamp": "2026-07-29T23:57:18Z",
       "test_id": "test_example.py::test_python_version_requirement",
       "requirement_ids": [
         "IS-001"
       ],
-      "thumbnail_path": "evidence/thumbnails/thumb_command_output_20251228_094353_ac1ce905.png",
+      "thumbnail_path": "evidence/thumbnails/thumb_command_output_20260729T235718Z_4b068fdd.png",
       "metadata": {}
     },
     {
       "id": "EV-0002",
       "type": "command_output",
       "description": "Required packages verification",
-      "file_path": "evidence/command_output_20251228_094353_47c0d555.png",
-      "timestamp": "2025-12-28T09:43:53.289179",
+      "file_path": "evidence/command_output_20260729T235718Z_86d1cc0a.png",
+      "sha256": "3826aafea022052847fb70a5e31382294a271fda94170a6b634d0295674f14fe",
+      "timestamp": "2026-07-29T23:57:18Z",
       "test_id": "test_example.py::test_required_packages_installed",
       "requirement_ids": [
         "IS-001"
       ],
-      "thumbnail_path": "evidence/thumbnails/thumb_command_output_20251228_094353_47c0d555.png",
+      "thumbnail_path": "evidence/thumbnails/thumb_command_output_20260729T235718Z_86d1cc0a.png",
       "metadata": {}
     },
     {
       "id": "EV-0003",
       "type": "directory_listing",
       "description": "Specification files directory",
-      "file_path": "evidence/directory_listing_20251228_094353_55bf5af9.png",
-      "timestamp": "2025-12-28T09:43:53.330940",
+      "file_path": "evidence/directory_listing_20260729T235718Z_9a760257.png",
+      "sha256": "7b00a86ea4b89f47bf458b616c408f8e3008d46de6d757d9841ae74d9cc71d69",
+      "timestamp": "2026-07-29T23:57:18Z",
       "test_id": "test_example.py::test_plugin_imports",
       "requirement_ids": [
         "IS-003"
       ],
-      "thumbnail_path": "evidence/thumbnails/thumb_directory_listing_20251228_094353_55bf5af9.png",
+      "thumbnail_path": "evidence/thumbnails/thumb_directory_listing_20260729T235718Z_9a760257.png",
       "metadata": {
         "directory_path": "/Users/william/code/pytest_gxp/examples/gxp_spec_files"
       }
@@ -47,13 +50,14 @@
       "id": "EV-0004",
       "type": "directory_listing",
       "description": "Report files directory",
-      "file_path": "evidence/directory_listing_20251228_094353_4ee83414.png",
-      "timestamp": "2025-12-28T09:43:53.438940",
+      "file_path": "evidence/directory_listing_20260729T235718Z_fb94d6c6.png",
+      "sha256": "b58929abe7ae208d6dd932263b4a176191e19e0db00f136d583f027e4bbfd3d8",
+      "timestamp": "2026-07-29T23:57:18Z",
       "test_id": "test_example.py::test_specification_parser_initialization",
       "requirement_ids": [
         "IS-003"
       ],
-      "thumbnail_path": "evidence/thumbnails/thumb_directory_listing_20251228_094353_4ee83414.png",
+      "thumbnail_path": "evidence/thumbnails/thumb_directory_listing_20260729T235718Z_fb94d6c6.png",
       "metadata": {
         "directory_path": "/Users/william/code/pytest_gxp/examples/gxp_report_files"
       }

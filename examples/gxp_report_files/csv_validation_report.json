@@ -2,14 +2,30 @@
   "report_metadata": {
     "title": "Operational Qualification Report",
     "qualification_type": "Operational Qualification",
-    "generated_date": "2025-12-28T09:43:53.445169",
-    "version": "1.0"
+    "generated_date": "2026-07-29T23:57:18Z",
+    "version": "1.0",
+    "status": "FINAL",
+    "provisional_reasons": [],
+    "generator": {
+      "name": "pytest-gxp",
+      "version": "0.2.0"
+    },
+    "findings_summary": {
+      "errors": 0,
+      "warnings": 8
+    },
+    "source_provenance": {
+      "source": "git",
+      "git_commit": "e8932b2e5517cbe92cca93108349f79ee9c07bd6",
+      "git_tag": null,
+      "git_dirty": true
+    }
   },
   "validation_info": {
     "software_name": "Example Application",
-    "software_version": "1.0.0",
+    "software_version": "0.2.0",
     "project_name": "Example Application",
-    "validation_date": "2025-12-28"
+    "validation_date": "2026-07-29"
   },
   "approvals": {
     "tester": {
@@ -54,14 +70,15 @@
     }
   },
   "test_execution_summary": {
-    "total_tests": 10,
+    "total_tests": 13,
     "executed_tests": 5,
     "passed_tests": 5,
     "failed_tests": 0,
     "skipped_tests": 0,
-    "not_executed_tests": 5,
+    "error_tests": 0,
+    "not_executed_tests": 8,
     "test_pass_rate": 100.0,
-    "test_execution_rate": 50.0
+    "test_execution_rate": 38.46153846153847
   },
   "requirement_coverage": {
     "total_requirements": 13,
@@ -69,36 +86,36 @@
     "requirements_without_tests": 8,
     "coverage_rate": 38.46153846153847,
     "requirements_verified": 5,
-    "verification_rate": 50.0
+    "verification_rate": 38.46153846153847
   },
   "test_summary": {
-    "total_test_cases": 10,
+    "total_test_cases": 13,
     "passed": 5,
     "failed": 0,
     "skipped": 0,
-    "not_executed": 5,
+    "errors": 0,
+    "not_executed": 8,
     "pass_rate": 100.0
   },
   "coverage": {
     "total_requirements": 13,
-    "requirements_with_tests": 10,
-    "requirements_without_tests": 3,
-    "requirement_coverage_rate": 76.92307692307693,
+    "requirements_with_tests": 13,
+    "requirements_without_tests": 0,
+    "requirement_coverage_rate": 100.0,
     "requirements_verified": 5,
-    "requirement_verification_rate": 50.0,
+    "requirement_verification_rate": 38.46153846153847,
     "covered_requirements": 5,
-    "coverage_percentage": 50.0,
-    "uncovered_requirements": [
-      "US-001",
-      "US-002",
-      "US-003"
-    ],
+    "coverage_percentage": 38.46153846153847,
+    "uncovered_requirements": [],
     "unverified_requirements": [
       "DS-001",
       "DS-002",
       "DS-003",
       "FS-003",
-      "FS-004"
+      "FS-004",
+      "US-001",
+      "US-002",
+      "US-003"
     ]
   },
   "test_cases": [
@@ -109,7 +126,18 @@
         "FS-001"
       ],
       "status": "PASSED",
-      "spec_type": "Functional"
+      "spec_type": "Functional",
+      "expected_result": "Expected Result: User is successfully authenticated and granted access to the system.",
+      "metadata": {
+        "spec_type": "Functional",
+        "requirement_id": "FS-001",
+        "Priority": "High",
+        "Category": "Authentication",
+        "Owner": "Product Team",
+        "Maps to Design Spec": "DS-001"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-FS-002",
@@ -118,7 +146,18 @@
         "FS-002"
       ],
       "status": "PASSED",
-      "spec_type": "Functional"
+      "spec_type": "Functional",
+      "expected_result": "Expected Result: All invalid input is rejected with clear error messages, and only valid data is processed.",
+      "metadata": {
+        "spec_type": "Functional",
+        "requirement_id": "FS-002",
+        "Priority": "High",
+        "Category": "Data Validation",
+        "Owner": "Development Team",
+        "Maps to Design Spec": "DS-002"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-FS-003",
@@ -127,7 +166,18 @@
         "FS-003"
       ],
       "status": "Not Executed",
-      "spec_type": "Functional"
+      "spec_type": "Functional",
+      "expected_result": "Expected Result: All user actions are recorded in the audit log with complete information for compliance review.",
+      "metadata": {
+        "spec_type": "Functional",
+        "requirement_id": "FS-003",
+        "Priority": "High",
+        "Category": "Compliance",
+        "Owner": "Compliance Team",
+        "Maps to Design Spec": "DS-003"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-FS-004",
@@ -136,7 +186,17 @@
         "FS-004"
       ],
       "status": "Not Executed",
-      "spec_type": "Functional"
+      "spec_type": "Functional",
+      "expected_result": "Expected Result: Users can successfully view and update their profile information with appropriate validation and notifications.",
+      "metadata": {
+        "spec_type": "Functional",
+        "requirement_id": "FS-004",
+        "Priority": "Medium",
+        "Category": "User Management",
+        "Owner": "Product Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-DS-001",
@@ -145,7 +205,17 @@
         "DS-001"
       ],
       "status": "Not Executed",
-      "spec_type": "Design"
+      "spec_type": "Design",
+      "expected_result": "Requirement DS-001 is satisfied: User Authentication System",
+      "metadata": {
+        "spec_type": "Design",
+        "requirement_id": "DS-001",
+        "Priority": "High",
+        "Category": "Security",
+        "Owner": "Security Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-DS-002",
@@ -154,7 +224,17 @@
         "DS-002"
       ],
       "status": "Not Executed",
-      "spec_type": "Design"
+      "spec_type": "Design",
+      "expected_result": "Requirement DS-002 is satisfied: Data Validation",
+      "metadata": {
+        "spec_type": "Design",
+        "requirement_id": "DS-002",
+        "Priority": "High",
+        "Category": "Data Integrity",
+        "Owner": "Development Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-DS-003",
@@ -163,7 +243,17 @@
         "DS-003"
       ],
       "status": "Not Executed",
-      "spec_type": "Design"
+      "spec_type": "Design",
+      "expected_result": "Requirement DS-003 is satisfied: Audit Trail",
+      "metadata": {
+        "spec_type": "Design",
+        "requirement_id": "DS-003",
+        "Priority": "High",
+        "Category": "Compliance",
+        "Owner": "Compliance Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-IS-001",
@@ -172,7 +262,18 @@
         "IS-001"
       ],
       "status": "PASSED",
-      "spec_type": "Installation"
+      "spec_type": "Installation",
+      "expected_result": "Expected Result: System requirements verification passes without errors.",
+      "metadata": {
+        "spec_type": "Installation",
+        "requirement_id": "IS-001",
+        "Priority": "Critical",
+        "Category": "Prerequisites",
+        "Phase": "IQ",
+        "Owner": "DevOps Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-IS-002",
@@ -181,7 +282,18 @@
         "IS-002"
       ],
       "status": "PASSED",
-      "spec_type": "Installation"
+      "spec_type": "Installation",
+      "expected_result": "Expected Result: Application files are installed with correct permissions and dependencies.",
+      "metadata": {
+        "spec_type": "Installation",
+        "requirement_id": "IS-002",
+        "Priority": "High",
+        "Category": "Application",
+        "Phase": "IQ",
+        "Owner": "DevOps Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
     },
     {
       "id": "TEST-IS-003",
@@ -190,7 +302,197 @@
         "IS-003"
       ],
       "status": "PASSED",
-      "spec_type": "Installation"
+      "spec_type": "Installation",
+      "expected_result": "Expected Result: Application configuration is properly initialized and functional.",
+      "metadata": {
+        "spec_type": "Installation",
+        "requirement_id": "IS-003",
+        "Priority": "High",
+        "Category": "Configuration",
+        "Phase": "IQ",
+        "Owner": "DevOps Team"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "id": "TEST-US-001",
+      "title": "Test US-001: Secure User Access",
+      "requirements": [
+        "US-001"
+      ],
+      "status": "Not Executed",
+      "spec_type": "User",
+      "expected_result": "Expected Result: Users can securely access the system with confidence that their accounts are protected.",
+      "metadata": {
+        "spec_type": "User",
+        "requirement_id": "US-001",
+        "Priority": "High",
+        "Category": "Security",
+        "Owner": "End Users"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "id": "TEST-US-002",
+      "title": "Test US-002: Data Accuracy",
+      "requirements": [
+        "US-002"
+      ],
+      "status": "Not Executed",
+      "spec_type": "User",
+      "expected_result": "Expected Result: Users can confidently enter data knowing that validation will catch errors before they cause problems.",
+      "metadata": {
+        "spec_type": "User",
+        "requirement_id": "US-002",
+        "Priority": "High",
+        "Category": "Usability",
+        "Owner": "End Users"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "id": "TEST-US-003",
+      "title": "Test US-003: Activity Tracking",
+      "requirements": [
+        "US-003"
+      ],
+      "status": "Not Executed",
+      "spec_type": "User",
+      "expected_result": "Expected Result: Administrators can effectively monitor and audit system usage for compliance and security purposes.",
+      "metadata": {
+        "spec_type": "User",
+        "requirement_id": "US-003",
+        "Priority": "High",
+        "Category": "Compliance",
+        "Owner": "Administrators"
+      },
+      "risk_tier": "",
+      "deviation_ref": null
+    }
+  ],
+  "test_execution": [
+    {
+      "node_id": "test_example.py::test_input_data_validation",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "FS-002"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "node_id": "test_example.py::test_plugin_entry_point",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "IS-002"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "node_id": "test_example.py::test_plugin_imports",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "IS-003"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "node_id": "test_example.py::test_python_version_requirement",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "IS-001"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "node_id": "test_example.py::test_required_packages_installed",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "IS-001"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "node_id": "test_example.py::test_specification_parser_initialization",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "IS-003"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    },
+    {
+      "node_id": "test_example.py::test_user_login_functionality",
+      "outcome": "PASSED",
+      "reason": "",
+      "requirement_ids": [
+        "FS-001"
+      ],
+      "risk_tier": "",
+      "deviation_ref": null
+    }
+  ],
+  "findings": [
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement DS-001 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement DS-002 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement DS-003 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement FS-003 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement FS-004 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement US-001 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement US-002 has no test coverage",
+      "location": ""
+    },
+    {
+      "code": "uncovered-requirement",
+      "severity": "warning",
+      "message": "Requirement US-003 has no test coverage",
+      "location": ""
     }
   ]
 }

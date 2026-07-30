@@ -57,6 +57,31 @@ def test_user_login():
     pass
 ```
 
+A test citing an ID that no specification defines raises an
+`unknown-requirement-ref` finding.
+
+### `@pytest.mark.gxp_risk`
+
+Declare the risk tier of the requirement this test verifies:
+
+```python
+@pytest.mark.gxp
+@pytest.mark.gxp_risk("high")
+@pytest.mark.requirements(["FS-001"])
+def test_user_login(gxp_evidence):
+    """Test user login functionality."""
+    pass
+```
+
+Accepted values are `"high"`, `"medium"`, and `"not-high"`; anything else raises an
+`invalid-risk-tier` finding and is treated as unset. The tier appears as a `Risk
+Tier` column in the traceability matrix and on each execution register entry, and
+a requirement takes the highest tier among the tests citing it.
+
+Under `--gxp-strict`, a `high` tier requirement verified with no objective
+evidence fails the run — a green assertion alone is not sufficient at that tier.
+See [Risk-Based Assurance](../validation/risk-based-assurance.md).
+
 ## Capturing Objective Evidence
 
 Use the `gxp_evidence` fixture to capture objective evidence during tests. Evidence is included in validation reports and provides documented proof of test execution.
@@ -105,6 +130,7 @@ def test_application_login(gxp_evidence, driver):
 | `capture_directory_listing(path, description)` | Convert directory listing to image |
 | `capture_command_output(text, description)` | Convert text output to image |
 | `add_image(path, description)` | Add existing image file |
+| `record_unscripted_session(charter, tester, duration_minutes, observations, defects=None)` | Record an unscripted or exploratory session as a JSON side-car |
 
 ### More Evidence Examples
 
@@ -167,9 +193,12 @@ After running tests, check the generated reports in your report directory:
 - `requirement_coverage.md` - Coverage summary
 
 ### Evidence
-- `evidence/` - Evidence image files
+- `evidence/` - Evidence image files and unscripted session records
 - `evidence/thumbnails/` - Thumbnail images
-- `evidence_manifest.json` - Evidence metadata
+- `evidence_manifest.json` - Evidence metadata, with a SHA-256 per item
+
+### Artifact Manifest
+- `artifact_manifest.sha256` - SHA-256 of every file above, written last
 
 ## Strict Coverage Mode
 
@@ -178,6 +207,32 @@ Fail the test run if any requirements lack test coverage:
 ```bash
 pytest --gxp --gxp-strict-coverage
 ```
+
+## Strict Mode
+
+Fail the test run on any error-severity finding — an unknown requirement
+reference, a duplicate requirement ID, a high-risk requirement with no evidence,
+or a non-passing test with no deviation reference:
+
+```bash
+pytest --gxp --gxp-strict
+```
+
+Findings are printed in the pytest terminal summary whichever way the run exits.
+See [Reports](reports.md#validation-findings) for the finding codes.
+
+## Recording Deviation References
+
+Supply deviation references for investigated failures as data, so controlled test
+files need no editing:
+
+```bash
+pytest --gxp --gxp-deviations=deviations.json
+```
+
+The file maps a pytest node ID or a requirement ID to a reference, for example
+`{"tests/test_login.py::test_session_timeout": "DEV-2026-014"}`. See
+[Configuration](../getting-started/configuration.md#deviation-references).
 
 ## Selecting Output Formats
 

@@ -114,7 +114,10 @@ def sample_requirement():
     return Requirement(
         id="FS-001",
         title="User Login",
-        description="The application shall allow users to log in.\n\n1. Display login form\n2. Validate credentials",
+        description=(
+            "The application shall allow users to log in.\n\n"
+            "1. Display login form\n2. Validate credentials"
+        ),
         spec_type=SpecType.FUNCTIONAL,
         metadata={"Priority": "High", "Category": "Authentication"},
     )
@@ -145,4 +148,3 @@ def sample_test_case():
         expected_result="User is authenticated successfully.",
         metadata={"spec_type": "Functional", "requirement_id": "FS-001"},
     )
-

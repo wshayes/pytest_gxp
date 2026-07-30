@@ -1,9 +1,9 @@
 """Pytest plugin hooks for GxP validation."""
 
+import json
 import warnings
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pytest
 from _pytest.config import Config
@@ -13,13 +13,33 @@ from _pytest.reports import TestReport
 from .config import GxPConfig, load_config_from_ini, load_config_from_pyproject, merge_config
 from .evidence import EvidenceCollector
 from .generator import TestCaseGenerator
-from .markdown_format import EvidenceItem, SpecType
+from .markdown_format import EvidenceItem, SpecType, ValidationFinding
 from .parser import SpecificationParser
-from .report import CSVValidationReport
+from .provenance import git_provenance, utc_now_iso, utc_today, write_artifact_manifest
+from .report import (
+    PASSING_OUTCOMES,
+    RISK_TIERS,
+    CSVValidationReport,
+    resolve_deviation_ref,
+    rollup_risk,
+)
 from .traceability import TraceabilityMatrix
 
 # Module-level reference to config for use in hooks
 _gxp_config: Optional[Config] = None
+
+# Test outcome severity, worst first. Used to merge the setup/call/teardown phases of one
+# test into a single verdict and to roll test outcomes up to their requirements.
+_STATUS_RANK = {
+    "ERROR": 0,
+    "FAILED": 1,
+    "XFAIL": 2,
+    "XPASS": 3,
+    "SKIPPED": 4,
+    "NOT_EXECUTED": 5,
+    "PASSED": 6,
+}
+_MAX_REASON_LENGTH = 500
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -74,6 +94,20 @@ def pytest_addoption(parser: Parser) -> None:
         default=False,
         help="Fail if any requirements lack test coverage",
     )
+    group.addoption(
+        "--gxp-strict",
+        action="store_true",
+        default=False,
+        help="Fail the session if any error-severity validation finding is raised",
+    )
+
+    # Deviation options
+    group.addoption(
+        "--gxp-deviations",
+        action="store",
+        default=None,
+        help="Path to a JSON map of {nodeid-or-requirement-id: deviation reference}",
+    )
 
     # Approval options
     group.addoption(
@@ -95,16 +129,33 @@ def pytest_addoption(parser: Parser) -> None:
         help="Approver name for approval signature",
     )
 
+    # Provenance options
+    group.addoption(
+        "--gxp-source-commit",
+        action="store",
+        default=None,
+        help="Commit of the validated system (overrides git detection)",
+    )
+    group.addoption(
+        "--gxp-source-tag",
+        action="store",
+        default=None,
+        help="Tag of the validated system (overrides git detection)",
+    )
+
     # Evidence options
+    # Defaults are None so that "flag not passed" stays distinguishable from an
+    # explicit choice and does not override ini/pyproject values.
     group.addoption(
         "--gxp-evidence-thumbnails",
         action="store_true",
-        default=True,
+        default=None,
         help="Generate thumbnail images for evidence (default: True)",
     )
     group.addoption(
         "--no-gxp-evidence-thumbnails",
         action="store_false",
+        default=None,
         dest="gxp_evidence_thumbnails",
         help="Disable thumbnail generation for evidence",
     )
@@ -113,7 +164,7 @@ def pytest_addoption(parser: Parser) -> None:
     group.addoption(
         "--gxp-output-formats",
         action="store",
-        default="csv,json,md,pdf",
+        default=None,
         help="Comma-separated list of output formats: csv,json,md,pdf (default: all)",
     )
 
@@ -124,6 +175,10 @@ def pytest_addoption(parser: Parser) -> None:
     parser.addini("gxp_software_version", "Software version being validated")
     parser.addini("gxp_project_name", "Project name for validation reports")
     parser.addini("gxp_strict_coverage", "Fail if requirements lack coverage (true/false)")
+    parser.addini("gxp_strict", "Fail on any error-severity finding (true/false)")
+    parser.addini("gxp_deviations", "Path to the deviation reference map (JSON)")
+    parser.addini("gxp_source_commit", "Commit of the validated system")
+    parser.addini("gxp_source_tag", "Tag of the validated system")
     parser.addini("gxp_tester_name", "Tester name for approval")
     parser.addini("gxp_tester_date", "Tester date for approval")
     parser.addini("gxp_reviewer_name", "Reviewer name for approval")
@@ -143,6 +198,10 @@ def pytest_configure(config: Config) -> None:
     config.addinivalue_line(
         "markers", "requirements(requirement_ids): mark test with requirement IDs"
     )
+    config.addinivalue_line(
+        "markers",
+        f"gxp_risk(tier): risk tier of the test, one of {', '.join(RISK_TIERS)}",
+    )
 
     if not config.getoption("--gxp"):
         return
@@ -159,6 +218,12 @@ def pytest_configure(config: Config) -> None:
         "software_version": config.getoption("--gxp-software-version"),
         "project_name": config.getoption("--gxp-project-name"),
         "strict_coverage": config.getoption("--gxp-strict-coverage"),
+        "strict": config.getoption("--gxp-strict"),
+        "deviations": config.getoption("--gxp-deviations"),
+        "output_formats": config.getoption("--gxp-output-formats"),
+        "evidence_thumbnails": config.getoption("gxp_evidence_thumbnails"),
+        "source_commit": config.getoption("--gxp-source-commit"),
+        "source_tag": config.getoption("--gxp-source-tag"),
         "tester_name": config.getoption("--gxp-tester"),
         "reviewer_name": config.getoption("--gxp-reviewer"),
         "approver_name": config.getoption("--gxp-approver"),
@@ -178,20 +243,66 @@ def pytest_configure(config: Config) -> None:
     config._gxp_spec_files = Path(gxp_config.spec_files)
     config._gxp_report_files = Path(gxp_config.report_files)
 
+    # Capture the source revision of the system under validation, once per session
+    config._gxp_provenance = _resolve_provenance(config, gxp_config)
+
     # Initialize GxP components
     config._gxp_parser = SpecificationParser()
     config._gxp_generator = TestCaseGenerator(config._gxp_parser)
     config._gxp_traceability = TraceabilityMatrix()
     config._gxp_report = CSVValidationReport()
     config._gxp_test_results: Dict[str, str] = {}
+    config._gxp_test_records: Dict[str, Dict[str, Any]] = {}
     config._gxp_test_requirement_map: Dict[str, List[str]] = {}
+    config._gxp_test_risk: Dict[str, str] = {}
+    config._gxp_findings: List[ValidationFinding] = []
+
+    # Deviation references are assigned after investigation, so they arrive as a file
+    config._gxp_deviations = _load_deviations(gxp_config.deviations, config._gxp_findings)
 
     # Initialize evidence collector
-    generate_thumbnails = config.getoption("gxp_evidence_thumbnails", True)
     config._gxp_evidence_collector = EvidenceCollector(
         config._gxp_report_files,
-        generate_thumbnails=generate_thumbnails,
+        generate_thumbnails=gxp_config.evidence_thumbnails,
     )
+
+
+def _load_deviations(path: str, findings: List[ValidationFinding]) -> Dict[str, str]:
+    """Load the deviation reference map; an unusable file is a finding, never a crash."""
+    if not path:
+        return {}
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("deviation file must contain a JSON object")
+        return {str(key): str(value) for key, value in data.items()}
+    except (OSError, ValueError) as e:
+        findings.append(
+            ValidationFinding(
+                code="deviation-file-error",
+                severity="warning",
+                message=f"Could not read deviation file: {e}",
+                location=str(path),
+            )
+        )
+        return {}
+
+
+def _resolve_provenance(config: Config, gxp_config: GxPConfig) -> Dict[str, Any]:
+    """Determine the source revision, letting explicit config override git detection."""
+    provenance = git_provenance(Path(str(config.rootdir)) if config.rootdir else Path.cwd())
+
+    if gxp_config.source_commit or gxp_config.source_tag:
+        provenance = {
+            "source": "config",
+            "git_commit": gxp_config.source_commit or provenance["git_commit"],
+            "git_tag": gxp_config.source_tag or provenance["git_tag"],
+            "git_dirty": provenance["git_dirty"],
+        }
+
+    return provenance
 
 
 def pytest_collection_modifyitems(config: Config, items: List) -> None:
@@ -203,8 +314,9 @@ def pytest_collection_modifyitems(config: Config, items: List) -> None:
     if not hasattr(config, "_gxp_parser"):
         return
 
-    # Build test-to-requirement mapping from markers
+    # Build test-to-requirement and test-to-risk mappings from markers
     test_requirement_map: Dict[str, List[str]] = {}
+    test_risk_map: Dict[str, str] = {}
     for item in items:
         marker = item.get_closest_marker("requirements")
         if marker and marker.args:
@@ -213,7 +325,25 @@ def pytest_collection_modifyitems(config: Config, items: List) -> None:
                 test_requirement_map[item.nodeid] = list(requirement_ids)
             elif isinstance(requirement_ids, str):
                 test_requirement_map[item.nodeid] = [requirement_ids]
+
+        risk_marker = item.get_closest_marker("gxp_risk")
+        if risk_marker and risk_marker.args:
+            tier = str(risk_marker.args[0])
+            if tier in RISK_TIERS:
+                test_risk_map[item.nodeid] = tier
+            else:
+                config._gxp_findings.append(
+                    ValidationFinding(
+                        code="invalid-risk-tier",
+                        severity="warning",
+                        message=(
+                            f"Unknown risk tier {tier!r}; expected one of {', '.join(RISK_TIERS)}"
+                        ),
+                        location=item.nodeid,
+                    )
+                )
     config._gxp_test_requirement_map = test_requirement_map
+    config._gxp_test_risk = test_risk_map
 
     # Parse specifications
     spec_files_path = config._gxp_spec_files
@@ -227,19 +357,22 @@ def pytest_collection_modifyitems(config: Config, items: List) -> None:
             stacklevel=2,
         )
 
+    # Findings raised while parsing the specifications
+    config._gxp_findings.extend(config._gxp_parser.findings)
+
     # Generate test cases from specifications
     design_spec = config._gxp_specs.get(SpecType.DESIGN)
     functional_spec = config._gxp_specs.get(SpecType.FUNCTIONAL)
     installation_spec = config._gxp_specs.get(SpecType.INSTALLATION)
+    user_spec = config._gxp_specs.get(SpecType.USER)
 
-    if design_spec or functional_spec or installation_spec:
+    if design_spec or functional_spec or installation_spec or user_spec:
         test_cases = config._gxp_generator.generate_test_cases(
-            design_spec, functional_spec, installation_spec
+            design_spec, functional_spec, installation_spec, user_spec
         )
         config._gxp_test_cases = test_cases
 
         # Generate traceability matrix data (outputs written at session finish)
-        user_spec = config._gxp_specs.get(SpecType.USER)
         config._gxp_traceability.generate_matrix(
             test_cases,
             design_spec,
@@ -250,11 +383,30 @@ def pytest_collection_modifyitems(config: Config, items: List) -> None:
     else:
         config._gxp_test_cases = []
 
-    # Collect all requirements for coverage checking
+    # Collect all requirements for coverage checking, in a fixed spec-type order
     all_requirements = []
-    for spec in config._gxp_specs.values():
-        all_requirements.extend(spec.requirements)
+    for spec_type in SpecType:
+        spec = config._gxp_specs.get(spec_type)
+        if spec:
+            all_requirements.extend(spec.requirements)
     config._gxp_all_requirements = all_requirements
+
+    # Tests may only cite requirements that actually exist
+    known_requirement_ids = {req.id for req in all_requirements}
+    for nodeid, req_ids in sorted(test_requirement_map.items()):
+        for req_id in req_ids:
+            if req_id not in known_requirement_ids:
+                config._gxp_findings.append(
+                    ValidationFinding(
+                        code="unknown-requirement-ref",
+                        severity="error",
+                        message=(
+                            f"Test cites requirement {req_id}, which is not defined in "
+                            "any specification"
+                        ),
+                        location=nodeid,
+                    )
+                )
 
 
 def pytest_runtest_setup(item) -> None:
@@ -267,8 +419,50 @@ def pytest_runtest_setup(item) -> None:
         item.add_marker(pytest.mark.gxp())
 
 
+def _reason_from_report(report: TestReport) -> str:
+    """Extract a one-line reason from a phase report (skip message or failure summary)."""
+    longrepr = report.longrepr
+    if longrepr is None:
+        return ""
+
+    crash = getattr(longrepr, "reprcrash", None)
+    if crash is not None and getattr(crash, "message", None):
+        text = str(crash.message)
+    elif isinstance(longrepr, tuple) and len(longrepr) == 3:
+        # Skips are reported as (path, lineno, "Skipped: reason")
+        text = str(longrepr[2])
+    else:
+        text = str(longrepr)
+
+    lines = [line for line in text.strip().splitlines() if line.strip()]
+    return lines[0].strip()[:_MAX_REASON_LENGTH] if lines else ""
+
+
+def _classify_report(report: TestReport) -> Optional[str]:
+    """Map one test phase to a GxP status, or None when the phase carries no verdict."""
+    if report.when == "setup":
+        if report.skipped:
+            return "SKIPPED"
+        return "ERROR" if report.failed else None
+
+    if report.when == "call":
+        if hasattr(report, "wasxfail"):
+            if report.passed:
+                return "XPASS"
+            if report.skipped:
+                return "XFAIL"
+        if report.failed:
+            return "FAILED"
+        if report.skipped:
+            return "SKIPPED"
+        return "PASSED"
+
+    # Teardown only matters when it breaks
+    return "ERROR" if report.failed else None
+
+
 def pytest_runtest_logreport(report: TestReport) -> None:
-    """Log test report for GxP validation."""
+    """Record every test phase so skips, errors and xfails reach the validation record."""
     global _gxp_config
 
     # Use module-level config reference
@@ -280,21 +474,31 @@ def pytest_runtest_logreport(report: TestReport) -> None:
     if not hasattr(config, "_gxp_test_results"):
         return
 
-    if report.when == "call":
-        test_id = report.nodeid
-        status = report.outcome.upper()
+    status = _classify_report(report)
+    if status is None:
+        return
 
-        # Store test result
-        config._gxp_test_results[test_id] = status
+    test_id = report.nodeid
+    requirement_ids = config._gxp_test_requirement_map.get(test_id, [])
 
-        # Update traceability matrix using marker-based mapping
-        has_traceability = hasattr(config, "_gxp_traceability")
-        has_req_map = hasattr(config, "_gxp_test_requirement_map")
-        if has_traceability and has_req_map:
-            requirement_ids = config._gxp_test_requirement_map.get(test_id, [])
-            for req_id in requirement_ids:
-                # Update status for each requirement covered by this test
-                config._gxp_traceability.update_test_status_by_requirement(req_id, status)
+    # Keep the worst status seen across this test's phases
+    existing = config._gxp_test_records.get(test_id)
+    if existing is None or _STATUS_RANK[status] < _STATUS_RANK[existing["status"]]:
+        reason = getattr(report, "wasxfail", None) or _reason_from_report(report)
+        config._gxp_test_records[test_id] = {
+            "status": status,
+            "reason": reason[:_MAX_REASON_LENGTH],
+            "requirement_ids": list(requirement_ids),
+            "risk_tier": getattr(config, "_gxp_test_risk", {}).get(test_id, ""),
+        }
+
+    status = config._gxp_test_records[test_id]["status"]
+    config._gxp_test_results[test_id] = status
+
+    # Update traceability matrix using marker-based mapping
+    if hasattr(config, "_gxp_traceability"):
+        for req_id in requirement_ids:
+            config._gxp_traceability.update_test_status_by_requirement(req_id, status)
 
 
 @pytest.fixture
@@ -337,6 +541,9 @@ def gxp_evidence(request):
                 pass
 
             def add_image(self, *args, **kwargs):
+                pass
+
+            def record_unscripted_session(self, *args, **kwargs):
                 pass
 
         yield NoOpCollector()
@@ -385,25 +592,21 @@ def pytest_sessionfinish(session, exitstatus) -> None:
 
     # Build requirement-based results mapping
     # Map each requirement to its test result based on markers
-    requirement_results: Dict[str, str] = {}
     requirement_tests: Dict[str, List[str]] = {}
-
     for nodeid, req_ids in test_requirement_map.items():
-        test_status = test_results.get(nodeid, "NOT_EXECUTED")
         for req_id in req_ids:
-            if req_id not in requirement_tests:
-                requirement_tests[req_id] = []
-            requirement_tests[req_id].append(nodeid)
+            requirement_tests.setdefault(req_id, []).append(nodeid)
 
-            # A requirement is considered PASSED only if all its tests pass
-            # If any test fails, the requirement is FAILED
-            current_status = requirement_results.get(req_id)
-            if current_status is None:
-                requirement_results[req_id] = test_status
-            elif test_status == "FAILED":
-                requirement_results[req_id] = "FAILED"
-            elif test_status == "PASSED" and current_status != "FAILED":
-                requirement_results[req_id] = "PASSED"
+    test_records = getattr(config, "_gxp_test_records", {})
+    requirement_results: Dict[str, str] = {
+        req_id: _rollup_requirement_status(
+            [test_results.get(nodeid, "NOT_EXECUTED") for nodeid in nodeids]
+        )
+        for req_id, nodeids in requirement_tests.items()
+    }
+
+    # Every matrix row now names one real test and carries that test's own status
+    config._gxp_traceability.attach_tests(requirement_tests, test_records)
 
     # Check requirement coverage
     all_req_ids = {req.id for req in all_requirements}
@@ -416,6 +619,15 @@ def pytest_sessionfinish(session, exitstatus) -> None:
             f"GxP: {len(uncovered_req_ids)} requirement(s) have no test coverage: "
             f"{', '.join(sorted(uncovered_req_ids))}",
             stacklevel=2,
+        )
+        findings = getattr(config, "_gxp_findings", [])
+        findings.extend(
+            ValidationFinding(
+                code="uncovered-requirement",
+                severity="warning",
+                message=f"Requirement {req_id} has no test coverage",
+            )
+            for req_id in sorted(uncovered_req_ids)
         )
 
     # Fail if strict coverage is enabled and there are uncovered requirements
@@ -453,7 +665,7 @@ def pytest_sessionfinish(session, exitstatus) -> None:
     }
     qual_type = qual_type_map.get(gxp_config.qualification_type, QualificationType.OQ)
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = utc_today()
     validation_metadata = ValidationMetadata(
         qualification_type=qual_type,
         software_name=gxp_config.project_name or "Application",
@@ -464,22 +676,28 @@ def pytest_sessionfinish(session, exitstatus) -> None:
             name=gxp_config.tester_name or "",
             role="Tester",
             date=gxp_config.tester_date or today,
-        ) if gxp_config.tester_name else None,
+        )
+        if gxp_config.tester_name
+        else None,
         reviewer=ApprovalSignature(
             name=gxp_config.reviewer_name or "",
             role="Reviewer",
             date=gxp_config.reviewer_date or today,
-        ) if gxp_config.reviewer_name else None,
+        )
+        if gxp_config.reviewer_name
+        else None,
         approver=ApprovalSignature(
             name=gxp_config.approver_name or "",
             role="Approver",
             date=gxp_config.approver_date or today,
-        ) if gxp_config.approver_name else None,
+        )
+        if gxp_config.approver_name
+        else None,
     )
 
-    # Parse output formats
-    output_formats_str = config.getoption("--gxp-output-formats", "csv,json,md,pdf")
-    output_formats = {fmt.strip().lower() for fmt in output_formats_str.split(",")}
+    # Parse output formats from the merged configuration
+    output_formats = {fmt.strip().lower() for fmt in gxp_config.output_formats.split(",")}
+    source_provenance = getattr(config, "_gxp_provenance", None)
 
     # Get evidence items from collector
     evidence_items: List[EvidenceItem] = []
@@ -489,6 +707,25 @@ def pytest_sessionfinish(session, exitstatus) -> None:
         # Write evidence manifest (always JSON)
         if evidence_items:
             evidence_collector.write_manifest()
+
+    # High-risk requirements need objective evidence, non-passing tests need a deviation
+    findings: List[ValidationFinding] = getattr(config, "_gxp_findings", [])
+    deviations = getattr(config, "_gxp_deviations", {})
+    findings.extend(_check_risk_evidence(requirement_tests, test_records, evidence_items))
+    findings.extend(_check_deviation_refs(test_records, deviations))
+
+    if gxp_config.strict:
+        error_findings = [f for f in findings if f.severity == "error"]
+        if error_findings:
+            session.exitstatus = 1
+            print(
+                f"\nGxP STRICT FAILURE: {len(error_findings)} error-severity "
+                "validation finding(s):\n  - "
+                + "\n  - ".join(
+                    f"{f.code} [{f.location or '-'}] {f.message}"
+                    for f in sorted(error_findings, key=lambda f: (f.code, f.location))
+                )
+            )
 
     # Generate the report data (always needed for any output format)
     config._gxp_report.generate_report(
@@ -503,6 +740,10 @@ def pytest_sessionfinish(session, exitstatus) -> None:
         validation_metadata=validation_metadata,
         all_requirements=all_requirements,
         requirement_tests=requirement_tests,
+        source_provenance=source_provenance,
+        findings=findings,
+        test_records=test_records,
+        deviations=deviations,
     )
 
     # Generate validation reports in requested formats
@@ -522,7 +763,9 @@ def pytest_sessionfinish(session, exitstatus) -> None:
         pdf_report_path = config._gxp_report_files / "csv_validation_report.pdf"
         try:
             config._gxp_report.write_pdf_report(pdf_report_path, evidence_items=evidence_items)
-        except ImportError as e:
+        except (ImportError, OSError) as e:
+            # WeasyPrint raises OSError when its native libraries are missing; a broken
+            # PDF backend must not cost us the remaining artefacts or the manifest.
             warnings.warn(f"PDF generation skipped: {e}", stacklevel=2)
 
     # Generate traceability matrix in requested formats
@@ -533,11 +776,15 @@ def pytest_sessionfinish(session, exitstatus) -> None:
 
     if "json" in output_formats:
         traceability_json_path = config._gxp_report_files / "traceability_matrix.json"
-        config._gxp_traceability.write_json(traceability_json_path, project_name)
+        config._gxp_traceability.write_json(
+            traceability_json_path, project_name, source_provenance=source_provenance
+        )
 
     if "md" in output_formats:
         traceability_md_path = config._gxp_report_files / "traceability_matrix.md"
-        config._gxp_traceability.write_markdown(traceability_md_path, project_name)
+        config._gxp_traceability.write_markdown(
+            traceability_md_path, project_name, source_provenance=source_provenance
+        )
 
     # Generate requirement coverage report (always markdown for now)
     if "md" in output_formats:
@@ -548,6 +795,94 @@ def pytest_sessionfinish(session, exitstatus) -> None:
             requirement_tests,
             requirement_results,
             test_results,
+        )
+
+    # Hash every artefact produced above; must stay the last output step
+    write_artifact_manifest(config._gxp_report_files)
+
+
+def _check_risk_evidence(
+    requirement_tests: Dict[str, List[str]],
+    test_records: Dict[str, Dict[str, Any]],
+    evidence_items: List[EvidenceItem],
+) -> List[ValidationFinding]:
+    """A high-risk requirement must be backed by at least one objective evidence item."""
+    with_evidence = {req_id for item in evidence_items for req_id in item.requirement_ids}
+
+    findings = []
+    for req_id in sorted(requirement_tests):
+        tiers = [
+            test_records.get(nodeid, {}).get("risk_tier", "")
+            for nodeid in requirement_tests[req_id]
+        ]
+        if rollup_risk(tiers) == "high" and req_id not in with_evidence:
+            findings.append(
+                ValidationFinding(
+                    code="high-risk-no-evidence",
+                    severity="error",
+                    message=f"High-risk requirement {req_id} has no objective evidence",
+                    location=req_id,
+                )
+            )
+    return findings
+
+
+def _check_deviation_refs(
+    test_records: Dict[str, Dict[str, Any]], deviations: Dict[str, str]
+) -> List[ValidationFinding]:
+    """Every non-passing test must carry a deviation reference."""
+    findings = []
+    for node_id in sorted(test_records):
+        record = test_records[node_id]
+        if record.get("status") in PASSING_OUTCOMES:
+            continue
+        if resolve_deviation_ref(node_id, list(record.get("requirement_ids", [])), deviations):
+            continue
+        findings.append(
+            ValidationFinding(
+                code="missing-deviation-ref",
+                severity="error",
+                message=(
+                    f"Test outcome {record.get('status', 'NOT_EXECUTED')} has no "
+                    "deviation reference"
+                ),
+                location=node_id,
+            )
+        )
+    return findings
+
+
+def _rollup_requirement_status(statuses: List[str]) -> str:
+    """Roll several test outcomes up to the status of the requirement they verify."""
+    if any(status in ("FAILED", "ERROR") for status in statuses):
+        return "FAILED"
+    if any(status in ("PASSED", "XPASS") for status in statuses):
+        return "PASSED"
+    if "SKIPPED" in statuses:
+        return "SKIPPED"
+    if "XFAIL" in statuses:
+        return "XFAIL"
+    return "NOT_EXECUTED"
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config: Config) -> None:
+    """Print GxP validation findings at the end of the run, errors first."""
+    if not config.getoption("--gxp", default=False):
+        return
+
+    findings = getattr(config, "_gxp_findings", [])
+    if not findings:
+        return
+
+    terminalreporter.write_sep("=", "GxP validation findings")
+    ordered = sorted(
+        findings,
+        key=lambda f: (0 if f.severity == "error" else 1, f.code, f.location, f.message),
+    )
+    for finding in ordered:
+        terminalreporter.write_line(
+            f"{finding.severity.upper()} {finding.code} "
+            f"[{finding.location or '-'}] {finding.message}"
         )
 
 
@@ -573,7 +908,7 @@ def _write_coverage_report(
     lines = [
         "# Requirement Coverage Report",
         "",
-        f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"**Generated:** {utc_now_iso()}",
         "",
         "## Summary",
         "",
@@ -592,23 +927,27 @@ def _write_coverage_report(
     uncovered = [req for req in all_requirements if req.id not in covered_ids]
 
     if uncovered:
-        lines.extend([
-            "## Requirements Without Test Coverage",
-            "",
-            "| Requirement ID | Title | Specification Type |",
-            "|----------------|-------|-------------------|",
-        ])
+        lines.extend(
+            [
+                "## Requirements Without Test Coverage",
+                "",
+                "| Requirement ID | Title | Specification Type |",
+                "|----------------|-------|-------------------|",
+            ]
+        )
         for req in uncovered:
             lines.append(f"| {req.id} | {req.title} | {req.spec_type.value} |")
         lines.append("")
 
     # List all requirements with their test status
-    lines.extend([
-        "## All Requirements",
-        "",
-        "| Requirement ID | Title | Tests | Status |",
-        "|----------------|-------|-------|--------|",
-    ])
+    lines.extend(
+        [
+            "## All Requirements",
+            "",
+            "| Requirement ID | Title | Tests | Status |",
+            "|----------------|-------|-------|--------|",
+        ]
+    )
 
     for req in all_requirements:
         tests = requirement_tests.get(req.id, [])

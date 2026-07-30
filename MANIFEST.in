@@ -5,6 +5,10 @@ include pyproject.toml
 recursive-include pytest_gxp *.py
 recursive-include pytest_gxp py.typed
 
+# Ship the tool-qualification suite so a user can qualify the pinned version
+recursive-include tool_qualification *.py *.ini *.md
+prune tool_qualification/.pytest_cache
+
 # Exclude documentation from package
 global-exclude docs
 prune docs

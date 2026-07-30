@@ -1,7 +1,5 @@
 """Tests for the test case generator."""
 
-
-
 from pytest_gxp.generator import TestCaseGenerator
 from pytest_gxp.markdown_format import Requirement, Specification, SpecType
 from pytest_gxp.parser import SpecificationParser
@@ -121,6 +119,35 @@ class TestTestCaseGenerator:
         # Should only have one test case, not two
         assert len(test_cases) == 1
 
+    def test_generate_test_cases_includes_user_spec(self, sample_specification):
+        """User requirements produce test cases so they reach the matrix and report."""
+        parser = SpecificationParser()
+        generator = TestCaseGenerator(parser)
+
+        user_spec = Specification(
+            spec_type=SpecType.USER,
+            title="User Spec",
+            version="1.0",
+            requirements=[
+                Requirement(
+                    id="US-001",
+                    title="Secure Access",
+                    description="As a user, I need secure access.",
+                    spec_type=SpecType.USER,
+                )
+            ],
+        )
+
+        test_cases = generator.generate_test_cases(
+            None, sample_specification, None, user_spec=user_spec
+        )
+
+        ids = [tc.id for tc in test_cases]
+        assert ids == ["TEST-FS-001", "TEST-US-001"]
+        user_case = test_cases[1]
+        assert user_case.requirements == ["US-001"]
+        assert user_case.metadata["spec_type"] == "User"
+
     def test_extract_steps_from_description(self):
         """Test extracting steps from requirement description."""
         parser = SpecificationParser()
@@ -209,4 +236,3 @@ Expected Result: The system should work correctly.
         assert "FS-001" in test_case.requirements
         assert len(test_case.steps) > 0
         assert test_case.metadata["requirement_id"] == "FS-001"
-

@@ -6,11 +6,11 @@ import json
 import os
 import shutil
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 from .markdown_format import EvidenceItem, EvidenceType
+from .provenance import utc_now_iso
 
 # Try to import Pillow, but make it optional
 try:
@@ -153,9 +153,7 @@ def directory_listing_to_image(
     ls_args.append(str(directory_path))
 
     try:
-        result = subprocess.run(
-            ls_args, capture_output=True, text=True, check=True, timeout=10
-        )
+        result = subprocess.run(ls_args, capture_output=True, text=True, check=True, timeout=10)
         listing_text = result.stdout
     except subprocess.CalledProcessError as e:
         listing_text = f"Error listing directory: {e.stderr}"
@@ -224,7 +222,8 @@ class EvidenceCollector:
 
     def _generate_filename(self, evidence_type: EvidenceType, extension: str = "png") -> str:
         """Generate a unique filename for evidence."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Compact UTC stamp, e.g. 20260729T121314Z
+        timestamp = utc_now_iso().replace("-", "").replace(":", "")
         short_hash = _generate_short_hash()
         return f"{evidence_type.value}_{timestamp}_{short_hash}.{extension}"
 
@@ -254,7 +253,7 @@ class EvidenceCollector:
     ) -> EvidenceItem:
         """Add an evidence item to the collection."""
         evidence_id = self._next_evidence_id()
-        timestamp = datetime.now().isoformat()
+        timestamp = utc_now_iso()
 
         # Create thumbnail
         thumbnail_path = self._create_thumbnail(file_path)
@@ -318,9 +317,7 @@ class EvidenceCollector:
                     "image_data must be bytes, a file path, or base64-encoded string"
                 ) from err
         else:
-            raise ValueError(
-                "image_data must be bytes, a file path, or base64-encoded string"
-            )
+            raise ValueError("image_data must be bytes, a file path, or base64-encoded string")
 
         return self._add_evidence(EvidenceType.SCREENSHOT, file_path, description, metadata)
 
@@ -346,9 +343,7 @@ class EvidenceCollector:
         filename = self._generate_filename(EvidenceType.DIRECTORY_LISTING)
         file_path = self.evidence_dir / filename
 
-        directory_listing_to_image(
-            directory_path, file_path, include_hidden=include_hidden
-        )
+        directory_listing_to_image(directory_path, file_path, include_hidden=include_hidden)
 
         evidence_metadata = {"directory_path": str(directory_path)}
         if metadata:
@@ -431,6 +426,58 @@ class EvidenceCollector:
 
         return self._add_evidence(EvidenceType.IMAGE, file_path, description, evidence_metadata)
 
+    def record_unscripted_session(
+        self,
+        charter: str,
+        tester: str,
+        duration_minutes: int,
+        observations: List[str],
+        defects: Optional[List[str]] = None,
+        description: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+    ) -> EvidenceItem:
+        """
+        Record an unscripted (exploratory) testing session as evidence.
+
+        Writes a JSON side-car with the session record; needs no Pillow.
+
+        Args:
+            charter: What the session set out to explore
+            tester: Who ran the session
+            duration_minutes: How long the session lasted
+            observations: What was observed during the session
+            defects: Defect references raised from the session
+            description: Description of the evidence (defaults to the charter)
+            metadata: Optional additional metadata
+
+        Returns:
+            The created EvidenceItem
+        """
+        filename = self._generate_filename(EvidenceType.UNSCRIPTED_SESSION, "json")
+        file_path = self.evidence_dir / filename
+
+        session = {
+            "charter": charter,
+            "tester": tester,
+            "duration_minutes": duration_minutes,
+            "observations": list(observations),
+            "defects": list(defects or []),
+            "recorded_at": utc_now_iso(),
+        }
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(session, f, indent=2, ensure_ascii=False)
+
+        evidence_metadata = dict(session)
+        if metadata:
+            evidence_metadata.update(metadata)
+
+        return self._add_evidence(
+            EvidenceType.UNSCRIPTED_SESSION,
+            file_path,
+            description or charter,
+            evidence_metadata,
+        )
+
     def get_evidence_for_test(self, test_id: str) -> List[EvidenceItem]:
         """Get all evidence items for a specific test."""
         return [item for item in self._evidence_items if item.test_id == test_id]
@@ -439,12 +486,20 @@ class EvidenceCollector:
         """Get all collected evidence items."""
         return self._evidence_items.copy()
 
+    def _file_sha256(self, relative_path: str) -> Optional[str]:
+        """Hash a stored evidence file so the manifest binds to its exact bytes."""
+        path = self.output_dir / relative_path
+        try:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return None
+
     def write_manifest(self) -> Path:
         """Write the evidence manifest to a JSON file."""
         manifest_path = self.output_dir / "evidence_manifest.json"
 
         manifest_data = {
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": utc_now_iso(),
             "evidence_count": len(self._evidence_items),
             "evidence": [
                 {
@@ -452,6 +507,7 @@ class EvidenceCollector:
                     "type": item.evidence_type.value,
                     "description": item.description,
                     "file_path": item.file_path,
+                    "sha256": self._file_sha256(item.file_path),
                     "timestamp": item.timestamp,
                     "test_id": item.test_id,
                     "requirement_ids": item.requirement_ids,
