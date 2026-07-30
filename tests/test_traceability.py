@@ -1,7 +1,5 @@
 """Tests for the traceability matrix generator."""
 
-
-
 from pytest_gxp.markdown_format import Requirement, Specification, SpecType, TestCase
 from pytest_gxp.traceability import TraceabilityMatrix
 
@@ -225,7 +223,9 @@ class TestTraceabilityMatrix:
             ],
         )
 
-        matrix_data = matrix.generate_matrix([test_case_1, test_case_2], None, functional_spec, None)
+        matrix_data = matrix.generate_matrix(
+            [test_case_1, test_case_2], None, functional_spec, None
+        )
 
         assert len(matrix_data) == 2
         assert matrix_data[0]["Test Case ID"] == "TEST-FS-001"
@@ -237,3 +237,130 @@ class TestTraceabilityMatrix:
         matrix_data = matrix.generate_matrix([], None, None, None)
         assert len(matrix_data) == 0
 
+
+class TestAttachTests:
+    """Test cases for expanding the matrix to one row per real test."""
+
+    def _matrix(self):
+        matrix = TraceabilityMatrix()
+        functional_spec = Specification(
+            spec_type=SpecType.FUNCTIONAL,
+            title="Functional Spec",
+            version="1.0",
+            requirements=[
+                Requirement(
+                    id="FS-001",
+                    title="Req 1",
+                    description="Req 1",
+                    spec_type=SpecType.FUNCTIONAL,
+                ),
+                Requirement(
+                    id="FS-002",
+                    title="Req 2",
+                    description="Req 2",
+                    spec_type=SpecType.FUNCTIONAL,
+                ),
+            ],
+        )
+        test_cases = [
+            TestCase(
+                id=f"TEST-{req_id}",
+                title=f"Test {req_id}",
+                description="",
+                requirements=[req_id],
+                steps=[],
+                expected_result="Pass",
+            )
+            for req_id in ("FS-001", "FS-002")
+        ]
+        matrix.generate_matrix(test_cases, None, functional_spec, None)
+        return matrix
+
+    def test_expands_one_row_per_test(self):
+        """A requirement with two tests becomes two rows, each with its own status."""
+        matrix = self._matrix()
+
+        rows = matrix.attach_tests(
+            {"FS-001": ["t.py::b_test", "t.py::a_test"]},
+            {
+                "t.py::a_test": {"status": "PASSED"},
+                "t.py::b_test": {"status": "FAILED"},
+            },
+        )
+
+        assert [row["Test Node ID"] for row in rows] == ["t.py::a_test", "t.py::b_test", ""]
+        assert [row["Status"] for row in rows] == ["PASSED", "FAILED", "Not Executed"]
+        assert [row["Requirement ID"] for row in rows] == ["FS-001", "FS-001", "FS-002"]
+
+    def test_untested_requirement_keeps_one_row(self):
+        """A requirement with no test keeps a single row with no node id."""
+        matrix = self._matrix()
+
+        rows = matrix.attach_tests({}, {})
+
+        assert len(rows) == 2
+        assert all(row["Test Node ID"] == "" for row in rows)
+        assert all(row["Status"] == "Not Executed" for row in rows)
+
+    def test_unknown_record_is_not_executed(self):
+        """A cited test with no execution record is reported as not executed."""
+        matrix = self._matrix()
+
+        rows = matrix.attach_tests({"FS-001": ["t.py::never_ran"]}, {})
+
+        assert rows[0]["Status"] == "NOT_EXECUTED"
+
+    def test_risk_tier_column_populated(self, temp_dir):
+        """Each test row carries its own risk tier; an untested requirement carries none."""
+        matrix = self._matrix()
+
+        rows = matrix.attach_tests(
+            {"FS-001": ["t.py::a_test"]},
+            {"t.py::a_test": {"status": "PASSED", "risk_tier": "high"}},
+        )
+
+        assert [row["Risk Tier"] for row in rows] == ["high", ""]
+
+        output_path = temp_dir / "traceability_matrix.csv"
+        matrix.write_csv(output_path)
+        lines = output_path.read_text().splitlines()
+        assert "Risk Tier" in lines[0]
+        assert "high" in lines[1]
+
+        markdown_path = temp_dir / "traceability_matrix.md"
+        matrix.write_markdown(markdown_path)
+        assert "Risk Tier" in markdown_path.read_text()
+
+    def test_failing_test_unverifies_requirement(self):
+        """One passing and one failing test on a requirement must not read as verified."""
+        matrix = self._matrix()
+        matrix.attach_tests(
+            {"FS-001": ["t.py::a_test", "t.py::b_test"]},
+            {"t.py::a_test": {"status": "PASSED"}, "t.py::b_test": {"status": "FAILED"}},
+        )
+
+        coverage = matrix.get_coverage_report()
+
+        assert coverage["requirements_verified"] == 0
+        assert coverage["unverified_requirements"] == ["FS-001", "FS-002"]
+
+    def test_write_csv_includes_node_id(self, temp_dir):
+        """The new column reaches the CSV."""
+        matrix = self._matrix()
+        matrix.attach_tests({"FS-001": ["t.py::a_test"]}, {"t.py::a_test": {"status": "PASSED"}})
+
+        output_path = temp_dir / "traceability_matrix.csv"
+        matrix.write_csv(output_path)
+        lines = output_path.read_text().splitlines()
+
+        assert "Test Node ID" in lines[0]
+        assert "t.py::a_test" in lines[1]
+
+    def test_write_markdown_without_attach(self, temp_dir):
+        """Matrices that were never attached still render (empty node id column)."""
+        matrix = self._matrix()
+
+        output_path = temp_dir / "traceability_matrix.md"
+        matrix.write_markdown(output_path)
+
+        assert "Test Node ID" in output_path.read_text()

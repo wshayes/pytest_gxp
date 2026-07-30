@@ -5,17 +5,19 @@ requirement coverage and identify any issues with test organization.
 """
 
 import ast
-import re
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 
 import click
 
 from pytest_gxp.markdown_format import Requirement, SpecType
 from pytest_gxp.parser import SpecificationParser
+
+if TYPE_CHECKING:
+    from pytest_gxp.markdown_format import Specification
 
 
 @dataclass
@@ -37,9 +39,7 @@ class CoverageResult:
     total_requirements: int = 0
     covered_requirements: int = 0
     uncovered_requirements: List[Requirement] = field(default_factory=list)
-    stub_only_requirements: List[Tuple[Requirement, List[TestInfo]]] = field(
-        default_factory=list
-    )
+    stub_only_requirements: List[Tuple[Requirement, List[TestInfo]]] = field(default_factory=list)
     duplicate_test_ids: Dict[str, List[TestInfo]] = field(default_factory=dict)
     tests_without_gxp_marker: List[TestInfo] = field(default_factory=list)
     orphan_tests: List[TestInfo] = field(default_factory=list)
@@ -63,7 +63,8 @@ def is_test_stub(node: ast.FunctionDef) -> bool:
         if isinstance(child, ast.Pass):
             # Check if it's the only statement in the body (excluding docstring)
             body = [
-                s for s in node.body
+                s
+                for s in node.body
                 if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))
             ]
             if len(body) == 1 and isinstance(body[0], ast.Pass):
@@ -239,7 +240,7 @@ def print_summary(result: CoverageResult, verbose: bool = False) -> None:
             invalid_ids = [rid for rid in test.requirement_ids if rid not in all_requirement_ids]
             click.echo(
                 f"  - {test.file_path}:{test.line_number} {test.function_name} "
-                f"(invalid: {', '.join(test.requirement_ids)})"
+                f"(invalid: {', '.join(invalid_ids)})"
             )
 
     # Uncovered requirements
@@ -276,41 +277,46 @@ all_requirement_ids: Set[str] = set()
 
 @click.command()
 @click.option(
-    '--spec-dir', '-s',
+    "--spec-dir",
+    "-s",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
-    default='gxp_spec_files',
-    help='Directory containing specification files (default: gxp_spec_files)',
+    default="gxp_spec_files",
+    help="Directory containing specification files (default: gxp_spec_files)",
 )
 @click.option(
-    '--test-dir', '-t',
+    "--test-dir",
+    "-t",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
-    default='tests',
-    help='Directory containing test files (default: tests)',
+    default="tests",
+    help="Directory containing test files (default: tests)",
 )
 @click.option(
-    '--output', '-o',
+    "--output",
+    "-o",
     type=click.Path(path_type=Path),
     default=None,
-    help='Write report to file (markdown format)',
+    help="Write report to file (markdown format)",
 )
 @click.option(
-    '--strict', '-S',
+    "--strict",
+    "-S",
     is_flag=True,
     default=False,
-    help='Exit with error code if any issues found',
+    help="Exit with error code if any issues found",
 )
 @click.option(
-    '--verbose', '-v',
+    "--verbose",
+    "-v",
     is_flag=True,
     default=False,
-    help='Enable verbose output',
+    help="Enable verbose output",
 )
 @click.option(
-    '--json',
-    'json_output',
+    "--json",
+    "json_output",
     is_flag=True,
     default=False,
-    help='Output results as JSON',
+    help="Output results as JSON",
 )
 def main(
     spec_dir: Path,
@@ -398,6 +404,7 @@ def main(
     # Output results
     if json_output:
         import json
+
         output_data = {
             "total_requirements": result.total_requirements,
             "covered_requirements": result.covered_requirements,
@@ -443,12 +450,12 @@ def write_markdown_report(
     specs: Dict[SpecType, "Specification"],
 ) -> None:
     """Write coverage report in markdown format."""
-    from datetime import datetime
+    from ..provenance import utc_now_iso
 
     lines = [
         "# GxP Requirement Coverage Report",
         "",
-        f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"**Generated:** {utc_now_iso()}",
         "",
         "## Summary",
         "",
@@ -468,35 +475,41 @@ def write_markdown_report(
     lines.append("")
 
     if result.duplicate_test_ids:
-        lines.extend([
-            "## Duplicate Test Names",
-            "",
-            "| Test Name | Locations |",
-            "|-----------|-----------|",
-        ])
+        lines.extend(
+            [
+                "## Duplicate Test Names",
+                "",
+                "| Test Name | Locations |",
+                "|-----------|-----------|",
+            ]
+        )
         for name, tests in result.duplicate_test_ids.items():
             locs = ", ".join(f"{t.file_path}:{t.line_number}" for t in tests)
             lines.append(f"| {name} | {locs} |")
         lines.append("")
 
     if result.uncovered_requirements:
-        lines.extend([
-            "## Requirements Without Tests",
-            "",
-            "| Requirement ID | Title | Specification |",
-            "|----------------|-------|---------------|",
-        ])
+        lines.extend(
+            [
+                "## Requirements Without Tests",
+                "",
+                "| Requirement ID | Title | Specification |",
+                "|----------------|-------|---------------|",
+            ]
+        )
         for req in result.uncovered_requirements:
             lines.append(f"| {req.id} | {req.title} | {req.spec_type.value} |")
         lines.append("")
 
     if result.stub_only_requirements:
-        lines.extend([
-            "## Requirements With Only Stub Tests",
-            "",
-            "| Requirement ID | Title | Stub Location |",
-            "|----------------|-------|---------------|",
-        ])
+        lines.extend(
+            [
+                "## Requirements With Only Stub Tests",
+                "",
+                "| Requirement ID | Title | Stub Location |",
+                "|----------------|-------|---------------|",
+            ]
+        )
         for req, tests in result.stub_only_requirements:
             locs = ", ".join(f"{t.file_path}:{t.line_number}" for t in tests)
             lines.append(f"| {req.id} | {req.title} | {locs} |")
@@ -506,5 +519,5 @@ def write_markdown_report(
     output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

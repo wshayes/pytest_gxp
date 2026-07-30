@@ -18,26 +18,21 @@ class TestCaseGenerator:
         design_spec: Optional[Specification],
         functional_spec: Optional[Specification],
         installation_spec: Optional[Specification] = None,
+        user_spec: Optional[Specification] = None,
     ) -> List[TestCase]:
-        """Generate test cases from design, functional, and installation specifications."""
+        """Generate test cases from design, functional, installation, and user specifications."""
         test_cases = []
 
-        # Prioritize functional spec requirements, then design, then installation
+        # Prioritize functional spec requirements, then design, installation, user
         requirements = []
         if functional_spec:
             requirements.extend(functional_spec.requirements)
-        if design_spec:
-            # Add design requirements that aren't already covered
+        for spec in (design_spec, installation_spec, user_spec):
+            if not spec:
+                continue
+            # Add requirements that aren't already covered
             existing_ids = {req.id for req in requirements}
-            requirements.extend(
-                req for req in design_spec.requirements if req.id not in existing_ids
-            )
-        if installation_spec:
-            # Add installation requirements that aren't already covered
-            existing_ids = {req.id for req in requirements}
-            requirements.extend(
-                req for req in installation_spec.requirements if req.id not in existing_ids
-            )
+            requirements.extend(req for req in spec.requirements if req.id not in existing_ids)
 
         # Generate test case for each requirement
         for req in requirements:

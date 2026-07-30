@@ -2,9 +2,10 @@
 
 import csv
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from .markdown_format import Requirement, Specification, TestCase
+from .provenance import utc_now_iso, utc_today
 
 
 class TraceabilityMatrix:
@@ -52,7 +53,9 @@ class TraceabilityMatrix:
                             "Requirement ID": req_id,
                             "Requirement Title": req.title,
                             "Specification Type": req.spec_type.value,
-                            "User Requirement ID": self._find_user_requirement(req_id, user_spec) if user_spec else "",
+                            "User Requirement ID": self._find_user_requirement(req_id, user_spec)
+                            if user_spec
+                            else "",
                             "Status": "Not Executed",  # Will be updated after test execution
                         }
                     )
@@ -81,6 +84,45 @@ class TraceabilityMatrix:
 
         return ""
 
+    def attach_tests(
+        self,
+        requirement_tests: Dict[str, List[str]],
+        test_records: Dict[str, Dict[str, Any]],
+    ) -> List[Dict]:
+        """Expand the matrix so every row names one real pytest test.
+
+        Each requirement row becomes one row per test that cites the requirement,
+        carrying that test's nodeid, its own status and its risk tier. A requirement
+        with no test keeps a single row with an empty node id, no risk tier and
+        status "Not Executed".
+
+        Args:
+            requirement_tests: Requirement ID -> pytest nodeids citing it
+            test_records: Nodeid -> execution record (``status``, ``reason``, ...)
+        """
+        expanded: List[Dict] = []
+
+        for row in self.matrix_data:
+            nodeids = sorted(requirement_tests.get(row["Requirement ID"], []))
+            if not nodeids:
+                expanded.append(
+                    {**row, "Test Node ID": "", "Risk Tier": "", "Status": "Not Executed"}
+                )
+                continue
+            for nodeid in nodeids:
+                record = test_records.get(nodeid, {})
+                expanded.append(
+                    {
+                        **row,
+                        "Test Node ID": nodeid,
+                        "Risk Tier": record.get("risk_tier", ""),
+                        "Status": record.get("status", "NOT_EXECUTED"),
+                    }
+                )
+
+        self.matrix_data = expanded
+        return self.matrix_data
+
     def write_csv(self, output_path: Path) -> None:
         """Write traceability matrix to CSV file."""
         if not self.matrix_data:
@@ -95,6 +137,8 @@ class TraceabilityMatrix:
             "Requirement Title",
             "Specification Type",
             "User Requirement ID",
+            "Test Node ID",
+            "Risk Tier",
             "Status",
         ]
 
@@ -103,10 +147,14 @@ class TraceabilityMatrix:
             writer.writeheader()
             writer.writerows(self.matrix_data)
 
-    def write_json(self, output_path: Path, project_name: str = "GxP Validation Project") -> None:
+    def write_json(
+        self,
+        output_path: Path,
+        project_name: str = "GxP Validation Project",
+        source_provenance: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Write traceability matrix to JSON file."""
         import json
-        from datetime import datetime
 
         if not self.matrix_data:
             return
@@ -119,8 +167,15 @@ class TraceabilityMatrix:
             "metadata": {
                 "title": "Traceability Matrix",
                 "project": project_name,
-                "generated_date": datetime.now().isoformat(),
+                "generated_date": utc_now_iso(),
                 "version": "1.0",
+                "source_provenance": source_provenance
+                or {
+                    "source": "unavailable",
+                    "git_commit": None,
+                    "git_tag": None,
+                    "git_dirty": None,
+                },
             },
             "coverage": coverage,
             "matrix": self.matrix_data,
@@ -130,7 +185,10 @@ class TraceabilityMatrix:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def write_markdown(
-        self, output_path: Path, project_name: str = "GxP Validation Project"
+        self,
+        output_path: Path,
+        project_name: str = "GxP Validation Project",
+        source_provenance: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Write traceability matrix to Markdown file."""
         if not self.matrix_data:
@@ -138,32 +196,36 @@ class TraceabilityMatrix:
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        from datetime import datetime
-
         coverage = self.get_coverage_report()
+        provenance = source_provenance or {}
 
         md_lines = [
             "# Traceability Matrix",
             "",
             f"**Project:** {project_name}",
-            f"**Generated:** {datetime.now().strftime('%Y-%m-%d')}",
+            f"**Generated:** {utc_today()}",
             "**Version:** 1.0",
+            f"**Source Revision:** {provenance.get('git_commit') or 'unavailable'}",
             "",
             "## Overview",
             "",
-            "This traceability matrix demonstrates the relationship between test cases, requirements from Design and Functional Specifications, and User Requirements.",
+            "This traceability matrix demonstrates the relationship between test cases, "
+            "requirements from Design and Functional Specifications, and User Requirements.",
             "",
             "## Traceability Data",
             "",
-            "| Test Case ID | Test Case Title | Requirement ID | Requirement Title | Specification Type | User Requirement ID | Status |",
-            "|--------------|----------------|----------------|-------------------|-------------------|---------------------|--------|",
+            "| Test Case ID | Test Case Title | Requirement ID | Requirement Title | "
+            "Specification Type | User Requirement ID | Test Node ID | Risk Tier | Status |",
+            "|--------------|----------------|----------------|-------------------|"
+            "-------------------|---------------------|--------------|-----------|--------|",
         ]
 
         for row in self.matrix_data:
             md_lines.append(
                 f"| {row['Test Case ID']} | {row['Test Case Title']} | {row['Requirement ID']} | "
                 f"{row['Requirement Title']} | {row['Specification Type']} | "
-                f"{row.get('User Requirement ID', '')} | {row['Status']} |"
+                f"{row.get('User Requirement ID', '')} | {row.get('Test Node ID', '')} | "
+                f"{row.get('Risk Tier', '')} | {row['Status']} |"
             )
 
         md_lines.extend(
@@ -178,9 +240,13 @@ class TraceabilityMatrix:
         )
 
         if coverage.get("uncovered_requirements"):
-            md_lines.append(f"- **Uncovered Requirements:** {', '.join(coverage['uncovered_requirements'])}")
+            md_lines.append(
+                f"- **Uncovered Requirements:** {', '.join(coverage['uncovered_requirements'])}"
+            )
 
-        md_lines.extend(["", "## Notes", "", "- All requirements should have corresponding test cases", ""])
+        md_lines.extend(
+            ["", "## Notes", "", "- All requirements should have corresponding test cases", ""]
+        )
 
         with open(output_path, "w", encoding="utf-8") as f:
             f.write("\n".join(md_lines))
@@ -230,6 +296,7 @@ class TraceabilityMatrix:
         requirements_in_matrix: Set[str] = set()
         requirements_with_passing_tests: Set[str] = set()
         requirements_with_any_status: Set[str] = set()
+        requirements_with_failures: Set[str] = set()
 
         for row in self.matrix_data:
             req_id = row["Requirement ID"]
@@ -241,6 +308,12 @@ class TraceabilityMatrix:
 
             if status in ["Passed", "PASSED", "pass"]:
                 requirements_with_passing_tests.add(req_id)
+            elif status in ["Failed", "FAILED", "fail", "Error", "ERROR"]:
+                requirements_with_failures.add(req_id)
+
+        # After attach_tests() a requirement has one row per test, so a passing row no
+        # longer means the requirement passed: any failing test unverifies it.
+        requirements_with_passing_tests -= requirements_with_failures
 
         # Calculate total requirements from all_requirements if provided
         if all_requirements:
@@ -265,16 +338,15 @@ class TraceabilityMatrix:
             "requirements_with_tests": with_tests_count,
             "requirements_without_tests": len(requirements_without_tests),
             "requirement_coverage_rate": coverage_rate,
-
             # Verification metrics
             "requirements_verified": verified_count,
             "requirement_verification_rate": verification_rate,
-
             # Legacy field names for backwards compatibility
             "covered_requirements": verified_count,
             "coverage_percentage": verification_rate,
-
             # Detail lists
             "uncovered_requirements": sorted(requirements_without_tests),
-            "unverified_requirements": sorted(requirements_with_tests - requirements_with_passing_tests),
+            "unverified_requirements": sorted(
+                requirements_with_tests - requirements_with_passing_tests
+            ),
         }
