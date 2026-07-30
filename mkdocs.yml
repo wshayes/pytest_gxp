@@ -89,6 +89,12 @@ nav:
       - Installation Spec: examples/installation-spec.md
       - Traceability Matrix: examples/traceability-example.md
       - CSV Validation Report: examples/csv-validation-report-example.md
+  - Validation:
+      - Overview: validation/index.md
+      - Tool Qualification Protocol: validation/tool-qualification-protocol.md
+      - Work Instruction: validation/work-instruction.md
+      - Checklists and Forms: validation/forms.md
+      - Risk-Based Assurance: validation/risk-based-assurance.md
   - API Reference:
       - Parser: api/parser.md
       - Generator: api/generator.md

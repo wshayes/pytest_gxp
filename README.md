@@ -2,19 +2,27 @@
 
 Pytest plugin for GAMP5 GxP Computer System Validation (CSV) of custom applications. Provides requirement traceability, test coverage reporting, and validation reports for IQ/OQ/PQ qualification phases.
 
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
 ## Features
 
 - Parse Markdown-based Installation, Design, Functional, and User Specifications
 - Link pytest tests to requirements using markers
-- Generate traceability matrices (CSV, JSON, and Markdown)
+- Generate traceability matrices (CSV, JSON, and Markdown), one row per executed test
 - Generate qualification reports (IQ/OQ/PQ) with approval signatures
-- Capture objective evidence (screenshots, directory listings, command output)
+- Capture objective evidence (screenshots, directory listings, command output, unscripted sessions)
+- Report defects in specifications and markers as validation findings, with a strict gate
+- Record source provenance (commit, tag, dirty state) in every generated record
+- Classify requirement risk and gate high-risk requirements on objective evidence
+- Attach deviation references to non-passing results, and mark unclean records `PROVISIONAL`
+- Hash every generated artifact into `artifact_manifest.sha256`
 - Requirement coverage checking with strict mode option
 - Configuration via CLI, pyproject.toml, or pytest.ini
+- Ships a [tool-qualification suite](docs/validation/index.md) in the source distribution
 
 ## Technical Stack
 
-- Python 3.8+
+- Python 3.9+
 - pytest 7.0+
 
 ## Installation
@@ -165,6 +173,50 @@ Fail the test run if any requirements lack test coverage:
 pytest --gxp --gxp-strict-coverage
 ```
 
+### Strict Mode
+
+Fail the test run on any error-severity validation finding — a test citing a
+requirement that does not exist, a duplicate requirement ID, a high-risk
+requirement verified with no objective evidence, or a non-passing test with no
+deviation reference:
+
+```bash
+pytest --gxp --gxp-strict
+```
+
+Off by default, so enabling the plugin never changes whether a run passes.
+
+### Source Provenance
+
+The revision of the system under validation is detected from git and recorded in
+every report. Outside a git checkout, supply it explicitly:
+
+```bash
+pytest --gxp --gxp-source-commit=9f1c0d3e8a... --gxp-source-tag=v2.4.0
+```
+
+Nothing is fabricated: with neither git nor an override, the provenance is recorded
+as `unavailable`.
+
+### Deviation References
+
+Supply deviation references for investigated failures as data, so controlled test
+files need no editing:
+
+```bash
+pytest --gxp --gxp-deviations=deviations.json
+```
+
+```json
+{
+  "tests/test_login.py::test_session_timeout": "DEV-2026-014",
+  "FS-007": "DEV-2026-015"
+}
+```
+
+Keys are pytest node IDs or requirement IDs; a node ID wins for the same test. Any
+non-passing test with no reference raises a `missing-deviation-ref` finding.
+
 ### Example
 
 See the `examples/` directory for a complete working example with sample specifications.
@@ -190,8 +242,13 @@ pytest --gxp --gxp-spec-files=gxp_spec_files --gxp-report-files=gxp_report_files
 | `--gxp-reviewer` | | Reviewer name for approval signature |
 | `--gxp-approver` | | Approver name for approval signature |
 | `--gxp-strict-coverage` | False | Fail if requirements lack test coverage |
+| `--gxp-strict` | False | Fail on any error-severity validation finding |
+| `--gxp-deviations` | | Path to a JSON file mapping tests or requirements to deviation references |
+| `--gxp-source-commit` | | Commit of the validated system (overrides git detection) |
+| `--gxp-source-tag` | | Tag of the validated system (overrides git detection) |
 | `--gxp-output-formats` | `csv,json,md,pdf` | Comma-separated output formats |
 | `--gxp-evidence-thumbnails` | True | Generate thumbnail images for evidence |
+| `--no-gxp-evidence-thumbnails` | | Disable thumbnail generation |
 
 ### Configuration File (pyproject.toml)
 
@@ -203,10 +260,12 @@ qualification-type = "OQ"
 software-version = "1.0.0"
 project-name = "My Application"
 strict-coverage = false
+strict = false
 tester-name = "John Doe"
 reviewer-name = "Jane Smith"
 approver-name = "Bob Johnson"
 output-formats = "csv,json,md,pdf"
+deviations = "deviations.json"
 ```
 
 ### Configuration File (pytest.ini)
@@ -218,6 +277,10 @@ gxp_report_files = gxp_report_files
 gxp_qualification_type = OQ
 gxp_software_version = 1.0.0
 gxp_project_name = My Application
+gxp_strict = false
+gxp_deviations = deviations.json
+gxp_source_commit =
+gxp_source_tag =
 ```
 
 Configuration priority (highest to lowest):
@@ -273,13 +336,15 @@ Owner: Owner Name
 When running with `--gxp`, the plugin generates reports in all requested formats (CSV, JSON, Markdown, PDF by default):
 
 ### Traceability Matrix
-Links test cases to requirements with auto-generated Test IDs (`TEST-FS-001`).
+One row per executed test, naming the real pytest node ID alongside the
+requirement-derived Test ID (`TEST-FS-001`), its risk tier, and its own status.
 - `traceability_matrix.csv`
 - `traceability_matrix.json`
 - `traceability_matrix.md`
 
 ### Qualification Report
-Validation summary with approval signatures, test results, and evidence.
+Validation summary with approval signatures, findings, the test execution
+register, and evidence. Marked `PROVISIONAL` when the run was not clean.
 - `csv_validation_report.csv`
 - `csv_validation_report.json`
 - `csv_validation_report.md`
@@ -290,10 +355,25 @@ Details which requirements have tests and their verification status.
 - `requirement_coverage.md`
 
 ### Evidence (when captured)
-Objective evidence with auto-generated IDs (`EV-0001`).
-- `evidence/` - Evidence image files
+Objective evidence with auto-generated IDs (`EV-0001`), each hashed in the manifest.
+- `evidence/` - Evidence image files and unscripted session records
 - `evidence/thumbnails/` - Thumbnail images
-- `evidence_manifest.json` - Evidence metadata
+- `evidence_manifest.json` - Evidence metadata with a SHA-256 per item
+
+### Artifact Manifest
+A `sha256sum`-compatible digest of every artifact above, written last in the
+session so it covers all of them.
+- `artifact_manifest.sha256`
+
+```bash
+cd gxp_report_files
+grep -v '^#' artifact_manifest.sha256 | sha256sum -c -
+```
+
+The JSON, CSV, and Markdown outputs are reproducible across runs over unchanged
+inputs, apart from the recorded timestamps. The PDF is not — its renderer embeds a
+creation timestamp — so bind signatures to `artifact_manifest.sha256`. All
+timestamps are UTC ISO 8601 with a `Z` designator.
 
 ## Test Markers
 
@@ -301,6 +381,7 @@ The plugin provides pytest markers for GxP tests:
 
 - `@pytest.mark.gxp`: Mark a test as a GxP validation test
 - `@pytest.mark.requirements(["FS-001", "FS-002"])`: Associate test with requirement IDs
+- `@pytest.mark.gxp_risk("high")`: Declare the risk tier of the requirement being verified (`high`, `medium`, or `not-high`)
 
 Example:
 
@@ -308,19 +389,46 @@ Example:
 import pytest
 
 @pytest.mark.gxp
+@pytest.mark.gxp_risk("high")
 @pytest.mark.requirements(["FS-001"])
-def test_user_login():
+def test_user_login(gxp_evidence):
     """Test user login functionality."""
-    # Test implementation
+    # A high-risk requirement needs objective evidence under --gxp-strict
     pass
 
 @pytest.mark.gxp
+@pytest.mark.gxp_risk("medium")
 @pytest.mark.requirements(["FS-001", "FS-002"])
 def test_login_with_validation():
     """Test login with input validation."""
     # This test covers multiple requirements
     pass
 ```
+
+A requirement takes the highest tier among the tests citing it, and the tier
+appears in the traceability matrix and the execution register. An unrecognised
+tier raises an `invalid-risk-tier` finding and is treated as unset.
+
+## Validation Findings
+
+The plugin reports defects in your specifications, markers, and evidence rather
+than degrading silently. Findings are printed in the terminal summary, listed in
+the JSON report, and tabulated in the Markdown and PDF reports.
+
+| Code | Severity |
+|------|----------|
+| `duplicate-requirement-id` | error |
+| `malformed-requirement-heading` | error |
+| `unknown-requirement-ref` | error |
+| `high-risk-no-evidence` | error |
+| `missing-deviation-ref` | error |
+| `uncovered-requirement` | warning |
+| `invalid-risk-tier` | warning |
+| `deviation-file-error` | warning |
+
+`--gxp-strict` fails the run on any error-severity finding. See the
+[Reports guide](docs/user-guide/reports.md#validation-findings) for what each code
+means.
 
 ## Objective Evidence
 
@@ -384,6 +492,25 @@ def test_application_login(gxp_evidence, driver):
 | `capture_directory_listing(path, description)` | Convert directory listing to image |
 | `capture_command_output(text, description)` | Convert text output to image |
 | `add_image(path, description)` | Add existing image file |
+| `record_unscripted_session(charter, tester, duration_minutes, observations, defects=None)` | Record an unscripted or exploratory session as a JSON side-car (no Pillow needed) |
+
+### Unscripted Sessions
+
+Exploratory testing is recorded as evidence in its own right:
+
+```python
+@pytest.mark.gxp
+@pytest.mark.gxp_risk("not-high")
+@pytest.mark.requirements(["US-004"])
+def test_report_export_exploration(gxp_evidence):
+    gxp_evidence.record_unscripted_session(
+        charter="Explore report export across formats and locales",
+        tester="John Doe",
+        duration_minutes=45,
+        observations=["CSV export opens in Excel with UTF-8 characters intact"],
+        defects=["Export button remains enabled during export"],
+    )
+```
 
 ### Utility Functions
 
@@ -408,6 +535,32 @@ The plugin reports two distinct types of metrics:
 ### Requirement Coverage Metrics
 - **Requirement Coverage Rate**: Percentage of requirements that have at least one test
 - **Requirement Verification Rate**: Percentage of covered requirements verified by passing tests
+
+## Validating this Tool (Tool Qualification)
+
+pytest-gxp produces the traceability matrix, evidence manifest, and validation
+report that your organisation relies upon as GxP records. Under GAMP 5, a tool that
+produces validation evidence must itself be shown fit for that purpose. This plugin
+supports your validation; establishing its fitness for your intended use is the
+regulated user's responsibility, not something the package can assert on your
+behalf.
+
+An executable black-box qualification suite ships in the **source distribution**
+under `tool_qualification/` — deliberately excluded from the wheel, so a
+qualification package is an artifact you obtain and retain deliberately:
+
+```bash
+pip download --no-binary :all: --no-deps pytest-gxp==0.2.0 -d ./tq-download
+tar xzf ./tq-download/pytest_gxp-0.2.0.tar.gz && cd pytest_gxp-0.2.0
+
+TZ=UTC TQ_PINNED_VERSION=0.2.0 \
+  pytest -c tool_qualification/pytest.ini tool_qualification/ -m "not gap" -v
+```
+
+The [Validation](docs/validation/index.md) documentation section provides the
+supporting package as templates to adopt under your own document control: a tool
+qualification protocol, a work instruction, checklists and forms, and a risk-based
+assurance strategy.
 
 ## Qualification Types (GAMP5)
 

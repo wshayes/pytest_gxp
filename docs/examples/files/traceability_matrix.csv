@@ -1,9 +1,16 @@
-Test Case ID,Test Case Title,Requirement ID,Requirement Title,Specification Type,User Requirement ID,Status
-TEST-FS-001,Test FS-001: User Login Functionality,FS-001,User Login Functionality,Functional,US-001,Passed
-TEST-FS-002,Test FS-002: Input Data Validation,FS-002,Input Data Validation,Functional,US-002,Passed
-TEST-FS-003,Test FS-003: Audit Logging,FS-003,Audit Logging,Functional,US-003,Passed
-TEST-FS-004,Test FS-004: User Profile Management,FS-004,User Profile Management,Functional,,Not Executed
-TEST-DS-001,Test DS-001: User Authentication System,DS-001,User Authentication System,Design,US-001,Passed
-TEST-DS-002,Test DS-002: Data Validation,DS-002,Data Validation,Design,US-002,Passed
-TEST-DS-003,Test DS-003: Audit Trail,DS-003,Audit Trail,Design,US-003,Passed
-
+Test Case ID,Test Case Title,Requirement ID,Requirement Title,Specification Type,User Requirement ID,Test Node ID,Risk Tier,Status
+TEST-FS-001,Test FS-001: User Login Functionality,FS-001,User Login Functionality,Functional,,test_example.py::test_user_login_functionality,,PASSED
+TEST-FS-002,Test FS-002: Input Data Validation,FS-002,Input Data Validation,Functional,,test_example.py::test_input_data_validation,,PASSED
+TEST-FS-003,Test FS-003: Audit Logging,FS-003,Audit Logging,Functional,,,,Not Executed
+TEST-FS-004,Test FS-004: User Profile Management,FS-004,User Profile Management,Functional,,,,Not Executed
+TEST-DS-001,Test DS-001: User Authentication System,DS-001,User Authentication System,Design,,,,Not Executed
+TEST-DS-002,Test DS-002: Data Validation,DS-002,Data Validation,Design,,,,Not Executed
+TEST-DS-003,Test DS-003: Audit Trail,DS-003,Audit Trail,Design,,,,Not Executed
+TEST-IS-001,Test IS-001: System Requirements Verification,IS-001,System Requirements Verification,Installation,,test_example.py::test_python_version_requirement,,PASSED
+TEST-IS-001,Test IS-001: System Requirements Verification,IS-001,System Requirements Verification,Installation,,test_example.py::test_required_packages_installed,,PASSED
+TEST-IS-002,Test IS-002: Application Installation,IS-002,Application Installation,Installation,,test_example.py::test_plugin_entry_point,,PASSED
+TEST-IS-003,Test IS-003: Configuration Verification,IS-003,Configuration Verification,Installation,,test_example.py::test_plugin_imports,,PASSED
+TEST-IS-003,Test IS-003: Configuration Verification,IS-003,Configuration Verification,Installation,,test_example.py::test_specification_parser_initialization,,PASSED
+TEST-US-001,Test US-001: Secure User Access,US-001,Secure User Access,User,,,,Not Executed
+TEST-US-002,Test US-002: Data Accuracy,US-002,Data Accuracy,User,,,,Not Executed
+TEST-US-003,Test US-003: Activity Tracking,US-003,Activity Tracking,User,,,,Not Executed
