@@ -48,6 +48,10 @@ test-coverage:
 test-gxp:
     pytest --gxp --gxp-spec-files=examples/gxp_spec_files --gxp-report-files=examples/gxp_report_files
 
+# Run the tool qualification suite (TQ-001 gate)
+tq:
+    TZ=UTC pytest -c tool_qualification/pytest.ini tool_qualification/ -m "not gap" -v --tb=short
+
 # Clean build artifacts
 clean:
     rm -rf build/
