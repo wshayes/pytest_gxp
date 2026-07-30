@@ -562,6 +562,54 @@ supporting package as templates to adopt under your own document control: a tool
 qualification protocol, a work instruction, checklists and forms, and a risk-based
 assurance strategy.
 
+## Releasing (Maintainers)
+
+Releases are published to PyPI via [Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
+(OpenID Connect) — no API tokens are stored anywhere. The
+`.github/workflows/publish.yml` workflow builds the distributions, runs the
+TQ-001 tool-qualification gate against the built wheel, and only then uploads.
+An unqualified build never reaches PyPI, and the published artifact provably
+comes from the tagged CI build rather than a maintainer's machine.
+
+### One-time PyPI setup
+
+1. On PyPI, go to **Your account → Publishing → Add a new pending publisher**
+   (or, once the project exists, **Manage project → Publishing**) and register:
+
+   | Field | Value |
+   |-------|-------|
+   | PyPI project name | `pytest-gxp` |
+   | Owner | `wshayes` |
+   | Repository name | `pytest_gxp` |
+   | Workflow name | `publish.yml` |
+   | Environment name | `pypi` |
+
+2. On GitHub, create the matching environment: **Settings → Environments →
+   New environment → `pypi`**. Optionally add required reviewers so every
+   PyPI upload needs a manual approval click.
+
+### Cutting a release
+
+1. Bump `version` in `pyproject.toml` and add a `CHANGELOG.md` entry.
+2. Commit, merge to `main`, and confirm CI (unit matrix + TQ-001 gate) is green.
+3. Tag and publish the GitHub release:
+
+   ```bash
+   git tag -a vX.Y.Z -m "pytest-gxp X.Y.Z"
+   git push origin vX.Y.Z
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <notes>
+   ```
+
+4. The `Publish to PyPI` workflow triggers on the release, rebuilds from the
+   tag, re-runs the qualification gate against the exact wheel being
+   published, and uploads. (It can also be run manually from the Actions tab
+   via *workflow_dispatch* — useful for publishing a release created before
+   the workflow existed.)
+
+Record the released artifact hashes (from the GitHub release page or
+`shasum -a 256 dist/*`) in the release notes; user-side qualification pins
+against them.
+
 ## Qualification Types (GAMP5)
 
 | Phase | Description | Specifications Used |

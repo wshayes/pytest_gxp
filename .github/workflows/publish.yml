@@ -1,0 +1,80 @@
+name: Publish to PyPI
+
+# Publishes via PyPI Trusted Publishing (OIDC) — no API tokens.
+# One-time setup on PyPI is documented in README.md under "Releasing".
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # The wheel that will be published must pass its own tool qualification
+  # first; an unqualified build never reaches PyPI.
+  qualify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PDF rendering libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install from the built wheel
+        run: |
+          wheel=$(ls dist/*.whl)
+          python -m pip install "${wheel}[pdf]"
+
+      - name: Qualification gate
+        shell: bash
+        env:
+          TZ: UTC
+        run: |
+          TQ_PINNED_VERSION=$(python -c 'import pytest_gxp; print(pytest_gxp.__version__)') \
+            pytest -c tool_qualification/pytest.ini tool_qualification/ \
+            -m "not gap" -v --tb=short
+
+  publish:
+    needs: qualify
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pytest-gxp
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
