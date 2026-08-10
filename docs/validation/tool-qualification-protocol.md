@@ -175,6 +175,7 @@ populated; see §8.
 | TQ-6.7 | A thumbnail does not replace or substitute for full-size evidence | Mandatory |
 | TQ-6.8 | The high-risk evidence gate is computable from the generated records | Mandatory |
 | TQ-6.9 | Each evidence manifest entry carries a `sha256` value matching the bytes actually stored | Mandatory |
+| TQ-6.10 | A high-risk requirement evidenced only by unscripted session records is reported as an error and fails the run, while one carrying a session record *alongside* a capture is not | Mandatory |
 
 ### 5.7 TQ-7 — Report metadata, signature handling, provenance
 `test_tq7_report_metadata.py`

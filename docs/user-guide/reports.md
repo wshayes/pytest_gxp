@@ -182,6 +182,7 @@ terminal summary.
 | `uncovered-requirement` | warning | A requirement has no test citing it |
 | `invalid-risk-tier` | warning | A `gxp_risk` marker value is not `high`, `medium`, or `not-high` |
 | `high-risk-no-evidence` | error | A high-risk requirement was verified with no objective evidence |
+| `high-risk-evidence-unscripted-only` | error | A high-risk requirement's only evidence is unscripted session records, which describe what a tester did rather than capture system state |
 | `missing-deviation-ref` | error | A non-passing test has no deviation reference (see below) |
 | `deviation-file-error` | warning | The `--gxp-deviations` file is missing or unreadable |
 

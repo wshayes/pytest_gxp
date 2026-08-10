@@ -397,3 +397,100 @@ def test_every_manifest_entry_carries_a_verifying_hash(pytester, tq):
         f"declares {[d[:16] for d in declared]}; the captures were "
         f"{[HASH_A[:16], HASH_B[:16]]}."
     )
+
+
+@pytest.mark.mandatory
+@pytest.mark.tq_id("TQ-6.10")
+def test_unscripted_session_alone_does_not_satisfy_the_high_risk_gate(pytester, tq):
+    """A session record is not a capture of system state, and must not pass the gate.
+
+    The evidence gate counts entries against a requirement. An unscripted session
+    record is an evidence entry, so a gate that only counts would let a Tier 1
+    requirement be satisfied by a tester's narrative — the precise method
+    substitution the assurance matrix forbids, arriving as a green report.
+
+    Three high-risk requirements distinguish the three cases. FS-003 in particular
+    must NOT be flagged: supplementary exploratory testing alongside a real capture
+    is permitted at any tier, so the check must require *at least one* objective
+    item rather than the absence of session records.
+    """
+    h.write_spec(
+        pytester,
+        "functional",
+        [
+            h.Requirement("FS-001", "High risk, captured state"),
+            h.Requirement("FS-002", "High risk, session record only"),
+            h.Requirement("FS-003", "High risk, session record plus captured state"),
+        ],
+    )
+    (pytester.path / "image_a.png").write_bytes(IMAGE_A)
+    (pytester.path / "test_gate.py").write_text(
+        "import pathlib\n"
+        "import pytest\n"
+        "\n"
+        "HERE = pathlib.Path(__file__).parent\n"
+        "\n"
+        f"@pytest.mark.{cfg.MARKER_GXP}\n"
+        "@pytest.mark.requirements(['FS-001'])\n"
+        f"@pytest.mark.{cfg.MARKER_RISK}('high')\n"
+        f"def test_captured_state({cfg.EVIDENCE_FIXTURE}):\n"
+        "    data = (HERE / 'image_a.png').read_bytes()\n"
+        f"    {cfg.EVIDENCE_FIXTURE}.capture_screenshot(data, 'FS-001 state')\n"
+        "    assert True\n"
+        "\n"
+        f"@pytest.mark.{cfg.MARKER_GXP}\n"
+        "@pytest.mark.requirements(['FS-002'])\n"
+        f"@pytest.mark.{cfg.MARKER_RISK}('high')\n"
+        f"def test_session_only({cfg.EVIDENCE_FIXTURE}):\n"
+        f"    {cfg.EVIDENCE_FIXTURE}.record_unscripted_session(\n"
+        "        charter='Explore FS-002', tester='A. Tester',\n"
+        "        duration_minutes=30, observations=['looked fine'],\n"
+        "    )\n"
+        "    assert True\n"
+        "\n"
+        f"@pytest.mark.{cfg.MARKER_GXP}\n"
+        "@pytest.mark.requirements(['FS-003'])\n"
+        f"@pytest.mark.{cfg.MARKER_RISK}('high')\n"
+        f"def test_session_and_capture({cfg.EVIDENCE_FIXTURE}):\n"
+        f"    {cfg.EVIDENCE_FIXTURE}.record_unscripted_session(\n"
+        "        charter='Explore FS-003', tester='A. Tester',\n"
+        "        duration_minutes=30, observations=['looked fine'],\n"
+        "    )\n"
+        "    data = (HERE / 'image_a.png').read_bytes()\n"
+        f"    {cfg.EVIDENCE_FIXTURE}.capture_screenshot(data, 'FS-003 state')\n"
+        "    assert True\n",
+        encoding="utf-8",
+    )
+
+    strict = h.run_gxp(pytester, cfg.FLAG_STRICT)
+    report = h.load_report(pytester.path)
+    unscripted_only = h.findings(report, "high-risk-evidence-unscripted-only")
+    no_evidence = h.findings(report, "high-risk-no-evidence")
+
+    tq.observe(
+        strict_exit=strict.ret,
+        unscripted_only_findings=unscripted_only,
+        no_evidence_findings=no_evidence,
+        outcomes=strict.parseoutcomes(),
+    )
+
+    assert [f["location"] for f in unscripted_only] == ["FS-002"], (
+        "Expected exactly one 'high-risk-evidence-unscripted-only' finding, located "
+        f"at FS-002, got {unscripted_only}. If this is empty, a Tier 1 requirement "
+        "evidenced solely by a tester's narrative passes the evidence gate. If it "
+        "also names FS-003, the check rejects supplementary exploratory testing "
+        "that the assurance matrix permits alongside a real capture."
+    )
+    assert all(f["severity"] == "error" for f in unscripted_only), (
+        f"The finding is not error severity, so it cannot fail the run: {unscripted_only}."
+    )
+    assert [f["location"] for f in no_evidence] == [], (
+        "A requirement carrying a session record was also reported as having no "
+        f"evidence at all: {no_evidence}. The two conditions must be mutually "
+        "exclusive, or the record double-counts one defect as two."
+    )
+    assert strict.ret != 0, (
+        f"The run exited {strict.ret} under {cfg.FLAG_STRICT} despite an "
+        "error-severity finding. The gate does not fail the run, so a method "
+        "substitution would reach disposition as a clean qualification."
+    )

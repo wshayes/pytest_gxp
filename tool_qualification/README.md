@@ -51,7 +51,7 @@ images, then check the record tells the truth.
 | `test_tq3_traceability_accuracy.py` | TQ-3.1 – 3.6 |
 | `test_tq4_result_fidelity.py` | TQ-4.1 – 4.11 — the critical negative controls |
 | `test_tq5_coverage_and_formats.py` | TQ-5.1 – 5.7 |
-| `test_tq6_evidence_integrity.py` | TQ-6.1 – 6.9 |
+| `test_tq6_evidence_integrity.py` | TQ-6.1 – 6.10 |
 | `test_tq7_report_metadata.py` | TQ-7.1 – 7.9 |
 
 ## Before first use

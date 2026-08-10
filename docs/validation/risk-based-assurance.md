@@ -128,10 +128,19 @@ reaches the record is not an enforced tier.
 
 **Enforcement.** The Tier 1 evidence requirement is enforced programmatically,
 not by inspection. Running with `--gxp-strict`, a requirement at tier `high` with
-no evidence entry naming it produces a `high-risk-no-evidence` error finding, and
-any error-severity finding sets a non-zero exit status. The qualification run
-therefore fails rather than reporting a Tier 1 requirement as verified on the
-strength of a green assertion alone. See
+no evidence entry naming it produces a `high-risk-no-evidence` error finding.
+Because the gate would otherwise count entries without regard to what they
+contain, a requirement whose *only* evidence entries are unscripted session
+records produces a second error finding,
+`high-risk-evidence-unscripted-only`: a session record states what a tester did,
+not what the system did, and cannot discharge the Tier 1 evidence requirement
+alone. A session record captured *alongside* a state capture is unaffected, since
+supplementary exploratory testing is permitted at any tier.
+
+Both are error severity, and any error-severity finding sets a non-zero exit
+status. The qualification run therefore fails rather than reporting a Tier 1
+requirement as verified on the strength of a green assertion alone, or on the
+strength of a narrative substituted for a capture. See
 [WI-CSA-01 §5.4](work-instruction.md#54-execute-the-qualification-run).
 
 `--gxp-strict` is off by default, so that enabling the plugin cannot change the
@@ -223,9 +232,11 @@ automated qualification approach.
 | Test code | Under configuration management; frozen at tag per §6.8 | System owner |
 | Traceability matrix, validation report, evidence manifest, `artifact_manifest.sha256` | **GxP records**, generated; controlled on issue per §6.10 | QA |
 
-Each requirement in a derived specification includes a `Requirement-Hash` value
-recorded in the traceability matrix. A subsequent silent edit to requirement text
-therefore invalidates traceability rather than passing undetected.
+Derived specifications are frozen by tag at §6.8, and the approval binds to the
+**full commit SHA** that tag resolves to rather than to the tag name. A subsequent
+edit to requirement text produces a different commit, so it cannot reach an
+execution citing the approved SHA — a silent edit is detectable rather than
+passing unnoticed, and the same control covers the test code and fixtures.
 
 Duplicate and malformed requirement IDs are reported as findings rather than
 silently collapsed or dropped, so the denominator of the coverage arithmetic

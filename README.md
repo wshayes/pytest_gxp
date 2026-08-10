@@ -421,6 +421,7 @@ the JSON report, and tabulated in the Markdown and PDF reports.
 | `malformed-requirement-heading` | error |
 | `unknown-requirement-ref` | error |
 | `high-risk-no-evidence` | error |
+| `high-risk-evidence-unscripted-only` | error |
 | `missing-deviation-ref` | error |
 | `uncovered-requirement` | warning |
 | `invalid-risk-tier` | warning |

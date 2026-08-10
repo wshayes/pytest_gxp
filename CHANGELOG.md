@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`high-risk-evidence-unscripted-only` finding.** The high-risk evidence gate
+  previously counted evidence entries against a requirement without regard to
+  their type, so a Tier 1 requirement whose only evidence was an
+  `unscripted_session` record passed the gate. A session record states what a
+  tester did, not what the system did, and cannot discharge the Tier 1 evidence
+  requirement alone. Such a requirement now raises an error-severity finding of
+  its own, which fails the run under `--gxp-strict`. A session record captured
+  *alongside* a state capture is unaffected — supplementary exploratory testing
+  remains permitted at any tier. Covered by new qualification case **TQ-6.10**.
+
+  This is a behaviour change for any suite that relied, knowingly or otherwise,
+  on a session record satisfying the gate: such a run previously exited zero and
+  will now exit non-zero under `--gxp-strict`. Re-review any high-risk
+  requirement whose evidence is a session record.
+
+### Documentation
+
+- Removed the `Requirement-Hash` procedure step from the validation templates.
+  It was documented but never implemented — no parser support, no CLI, and no
+  column in the traceability matrix, despite the assurance strategy stating the
+  value was recorded there. The protocol freeze now binds to the **full commit
+  SHA** the approved tag resolves to, which covers every specification, test and
+  fixture byte atomically, and is verifiable with `git rev-parse`. WI-CSA-01
+  §5.4.1 additionally compares the executed SHA against the approved one, since
+  a tag is a movable reference and the tag name alone does not establish what was
+  executed.
+
 ## [0.2.0] - 2026-07-29
 
 This release makes the generated artifacts fit to be relied upon as GxP records:
