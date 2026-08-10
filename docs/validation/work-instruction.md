@@ -49,7 +49,7 @@ The following shall be confirmed before any qualification execution. Recorded on
 1. Validation Plan approved, including the risk-based assurance strategy.
 2. URS approved as a controlled document.
 3. Derived IS/DS/FS/US specifications complete, each requirement carrying
-   `Traces-To:` and `Requirement-Hash`.
+   `Traces-To:`.
 4. FRM-CSA-04 tier classification approved by QA for every requirement.
 5. pytest-gxp version pinned, and that version qualified and current under
    TQ-001.
@@ -99,7 +99,9 @@ The following shall be confirmed before any qualification execution. Recorded on
    for the pass determination — not a log line asserting success.
 6. For every high-risk test, include at least one negative or boundary case
    exercising the failure path.
-7. Compute and record `Requirement-Hash` for each requirement (see 5.2.3).
+7. No per-requirement content hash is recorded. The commit SHA captured at the
+   protocol freeze (5.2.3) covers every byte of every specification and test file
+   atomically, which is what binds the approval to the executed content.
 
 ### 5.2 Freeze and pre-approve the protocol
 
@@ -111,15 +113,38 @@ The following shall be confirmed before any qualification execution. Recorded on
    records a dirty-tree flag in its source provenance, so executing against a
    modified tree is visible in the record — but it is still not a valid
    qualification run.
-3. Generate the requirement hash manifest and confirm each specification
-   requirement's `Requirement-Hash` matches its current text. Any mismatch is
-   resolved before proceeding.
-4. Create an annotated tag naming the qualification phase and version, e.g.:
+3. Create a signed annotated tag naming the qualification phase and version, and
+   record the **full commit SHA** it resolves to:
 
-   ```
-   git tag -a OQ-1.0.0 -m "OQ protocol for <System> v1.4.2 — frozen for execution"
+   ```bash
+   git tag -s OQ-1.0.0 -m "OQ protocol for <System> v1.4.2 — frozen for execution"
    git push origin OQ-1.0.0
+   git rev-parse OQ-1.0.0^{commit}     # record this value on the approval record
    ```
+
+   The commit SHA is the identity of the frozen protocol. Record the SHA and not
+   the tag name alone: a tag is a movable reference, so an approval citing only
+   `OQ-1.0.0` binds to whatever that tag points at when it is later read, not to
+   what was approved. Where the hosting platform supports it, protect the
+   qualification tags against update and deletion.
+
+   A subsequent edit to any requirement text produces a different commit, so it
+   cannot reach an execution that cites the approved SHA. This is what makes a
+   silent edit detectable, and it covers the test code and fixtures as well as the
+   specification text.
+
+4. Verify the tag before relying on it:
+
+   ```bash
+   git tag -v OQ-1.0.0                 # signature valid, expected signer
+   git status --porcelain              # empty
+   ```
+
+   Where no commit-signing infrastructure is in place, use `git tag -a` and omit
+   the `git tag -v` check. The commit SHA still provides the binding between the
+   approval and the executed content; the signature adds attribution of *who*
+   created the freeze, which is worth having but is not what makes the freeze
+   effective.
 
 5. Produce the protocol package for approval: the tagged specification files,
    the tagged test files, FRM-CSA-04, and the tag/SHA record.
@@ -146,7 +171,10 @@ The following shall be confirmed before any qualification execution. Recorded on
 ### 5.4 Execute the qualification run
 
 1. Check out the approved tag into a clean working directory. Confirm
-   `git describe --exact-match --tags` returns the approved tag.
+   `git describe --exact-match --tags` returns the approved tag, **and** that
+   `git rev-parse HEAD` matches the full commit SHA recorded on the approval
+   record at 5.2.3. The tag name alone is not sufficient: a tag can be moved
+   between approval and execution, and only the SHA comparison detects it.
 2. Install the pinned, TQ-qualified pytest-gxp version and record the installed
    version and distribution hash.
 3. Execute, supplying the qualification type and leaving signatory fields empty:
@@ -170,10 +198,12 @@ The following shall be confirmed before any qualification execution. Recorded on
 6. The high-risk evidence gate is applied by the plugin, not by an external
    script. With `--gxp-strict`, any requirement whose risk tier is `high` and
    which has no associated entry in the evidence manifest produces a
-   `high-risk-no-evidence` error finding, and any error-severity finding sets a
-   non-zero exit status. A qualification run is therefore executed with
-   `--gxp-strict` on, and a zero exit is itself part of the evidence that the
-   gate was satisfied.
+   `high-risk-no-evidence` error finding; one whose only entries are unscripted
+   session records produces a `high-risk-evidence-unscripted-only` error finding,
+   because a session record describes the tester's activity rather than capturing
+   system state. Any error-severity finding sets a non-zero exit status. A
+   qualification run is therefore executed with `--gxp-strict` on, and a zero exit
+   is itself part of the evidence that the gate was satisfied.
 
    Verify the gate was armed rather than assuming it: the run output lists the
    findings section, and the report metadata carries a `findings_summary` with
@@ -344,11 +374,12 @@ Recorded on **FRM-CSA-03 Tool Qualification Checklist**.
 |---|---|
 | Tests adjusted after results observed | Tag-based protocol pre-approval (5.2); `git describe --exact-match` gate (5.4.1); dirty-tree flag in report source provenance |
 | Approver name attributed by anyone with repository access | Signatory fields prohibited in committed configuration (5.4.4) |
-| Requirement text edited without invalidating traceability | `Requirement-Hash` verification (5.2.3) |
+| Requirement text edited after approval | Approval binds to the full commit SHA, not the tag name (5.2.3); an edit produces a different commit, and the executed SHA is checked against the approved one (5.4.1) |
 | Duplicate or malformed requirement IDs distorting the denominator | `duplicate-requirement-id` and `malformed-requirement-heading` findings surfaced in the run output and report |
 | Silent skip inflating apparent coverage | Skip reason preserved in the test execution register; unjustified skip is a finding (5.6.4) |
 | Errored test counted as unverified-but-unnoticed | Errors recorded as `ERROR` and counted separately (5.6.5) |
 | High-risk requirement verified by a green assertion with no evidence | In-process evidence gate: `--gxp-strict` plus `gxp_risk("high")` (5.4.6) |
+| Unscripted session record substituted for objective evidence at Tier 1 | `high-risk-evidence-unscripted-only` finding; the gate distinguishes evidence type, not merely presence (5.4.6) |
 | Non-passing result routed for signature without a deviation reference | `missing-deviation-ref` finding and `PROVISIONAL` report status (5.6.1) |
 | IQ evidence taken from CI container rather than production | Environment table, no substitution for IQ (Validation Plan) |
 | Report re-generated after review, changing content | `artifact_manifest.sha256` written by the tool at session end, verified pre-review, and bound to the signature (5.4.7, 5.7.3) |

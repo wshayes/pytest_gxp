@@ -45,7 +45,7 @@ Completed by System Owner; approved by QA **before** execution.
 | A3 | Derived specifications complete for this phase | | |
 | A4 | Every requirement has an explicit expected result | | |
 | A5 | Every requirement carries a `Traces-To:` value resolving to an approved URS requirement | | |
-| A6 | Every requirement carries a `Requirement-Hash` matching its current text | | |
+| A6 | Full commit SHA recorded in the header above, matching `git rev-parse <tag>^{commit}`, and `git tag -v` verifies the tag | | |
 | A7 | FRM-CSA-04 tier classification approved by QA for every requirement in scope | | |
 | A8 | Prior phase closed (OQ not commenced before IQ disposition, etc.) or concurrent execution justified | | |
 

@@ -13,7 +13,7 @@ from _pytest.reports import TestReport
 from .config import GxPConfig, load_config_from_ini, load_config_from_pyproject, merge_config
 from .evidence import EvidenceCollector
 from .generator import TestCaseGenerator
-from .markdown_format import EvidenceItem, SpecType, ValidationFinding
+from .markdown_format import EvidenceItem, EvidenceType, SpecType, ValidationFinding
 from .parser import SpecificationParser
 from .provenance import git_provenance, utc_now_iso, utc_today, write_artifact_manifest
 from .report import (
@@ -806,8 +806,22 @@ def _check_risk_evidence(
     test_records: Dict[str, Dict[str, Any]],
     evidence_items: List[EvidenceItem],
 ) -> List[ValidationFinding]:
-    """A high-risk requirement must be backed by at least one objective evidence item."""
+    """A high-risk requirement must be backed by at least one objective evidence item.
+
+    An unscripted session record is a tester's narrative of what they did, not a
+    capture of system state, so it satisfies the presence of evidence but not the
+    method required at the high tier. A high-risk requirement evidenced only by
+    session records is therefore reported under its own code rather than passing the
+    gate, so that a method substitution is visible in the record instead of being
+    absorbed by a check that only counts entries.
+    """
     with_evidence = {req_id for item in evidence_items for req_id in item.requirement_ids}
+    with_objective_evidence = {
+        req_id
+        for item in evidence_items
+        if item.evidence_type != EvidenceType.UNSCRIPTED_SESSION
+        for req_id in item.requirement_ids
+    }
 
     findings = []
     for req_id in sorted(requirement_tests):
@@ -815,12 +829,26 @@ def _check_risk_evidence(
             test_records.get(nodeid, {}).get("risk_tier", "")
             for nodeid in requirement_tests[req_id]
         ]
-        if rollup_risk(tiers) == "high" and req_id not in with_evidence:
+        if rollup_risk(tiers) != "high":
+            continue
+        if req_id not in with_evidence:
             findings.append(
                 ValidationFinding(
                     code="high-risk-no-evidence",
                     severity="error",
                     message=f"High-risk requirement {req_id} has no objective evidence",
+                    location=req_id,
+                )
+            )
+        elif req_id not in with_objective_evidence:
+            findings.append(
+                ValidationFinding(
+                    code="high-risk-evidence-unscripted-only",
+                    severity="error",
+                    message=(
+                        f"High-risk requirement {req_id} is evidenced only by unscripted "
+                        "session records; the high tier requires a capture of system state"
+                    ),
                     location=req_id,
                 )
             )
