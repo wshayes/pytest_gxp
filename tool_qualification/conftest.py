@@ -136,6 +136,10 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
     }
     if report.failed and report.longreprtext:
         entry["failure_detail"] = report.longreprtext[-2000:]
+    if report.skipped and isinstance(report.longrepr, tuple):
+        # (path, lineno, reason) — a case that did not execute must say why in
+        # the record, not only in the console log.
+        entry["skip_reason"] = report.longrepr[2]
     with open(EVIDENCE_FILE, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry) + "\n")
 

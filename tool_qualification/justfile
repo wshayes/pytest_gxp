@@ -1,0 +1,90 @@
+# TQ-001 tool qualification for pytest-gxp.
+#
+# Recipes run from the distribution root (the parent of this directory), so the
+# commands issued and the records produced are identical to the ones documented
+# in README.md.
+
+set positional-arguments
+
+tq := justfile_directory()
+venv := ".tq"
+
+# macOS: Homebrew's pango/cairo are not on the dynamic loader's default path, so
+# WeasyPrint cannot find them and both the PDF case (TQ-5.7) and the signable
+# report would be lost to an environment quirk. Empty everywhere else.
+dyld := if path_exists("/opt/homebrew/lib") == "true" { "/opt/homebrew/lib" } else { "" }
+
+# Show available recipes
+default:
+    @just --list
+
+# Full qualification run: fresh venv, pinned wheel, dependency freeze, pass/fail gate
+start version="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{tq}}/.."
+
+    command -v uv > /dev/null 2>&1 || {
+        echo "Error: uv not found. Install it (https://docs.astral.sh/uv/)," >&2
+        echo "or follow the pip alternative in tool_qualification/README.md." >&2
+        exit 1
+    }
+
+    ver="{{version}}"
+    [ -n "$ver" ] || ver="$(cd "{{tq}}" && python3 -c 'import tq_config; print(tq_config.PINNED_VERSION)')"
+
+    # A locally built wheel is preferred, so a release candidate can be qualified
+    # before it is published — this is what the publish workflow gates on.
+    # Falls back to the published wheel on PyPI.
+    target="$(ls dist/pytest_gxp-"$ver"-*.whl 2>/dev/null | head -1 || true)"
+    if [ -n "$target" ]; then target="${target}[pdf]"; else target="pytest-gxp[pdf]==$ver"; fi
+
+    # Fresh venv, installed from a built wheel. Not `uv sync` against a checkout:
+    # that installs editable, and TQ-1.2 cannot hash an editable install.
+    uv venv --clear "{{venv}}"
+    uv pip install --python "{{venv}}/bin/python" "$target"
+    uv pip freeze --python "{{venv}}/bin/python" > tq_pip_freeze.txt
+
+    export DYLD_FALLBACK_LIBRARY_PATH="{{dyld}}"
+
+    # The install source and the loader path belong in the record, not only on
+    # the terminal.
+    printf 'TQ-001 qualification run\nversion : %s\nsource  : %s\nlibpath : %s\n\n' \
+        "$ver" "$target" "${DYLD_FALLBACK_LIBRARY_PATH:-(default)}" | tee tq_console.log
+
+    gate=0
+    TZ=UTC TQ_PINNED_VERSION="$ver" "{{venv}}/bin/pytest" \
+        -c "{{tq}}/pytest.ini" "{{tq}}" -m "not gap" -v --tb=short \
+        | tee -a tq_console.log || gate=$?
+
+    # A failed run needs its report too — marked provisional, stating why.
+    just --justfile "{{justfile()}}" report || true
+    exit $gate
+
+# Render the Tool Qualification Report from the last run: Markdown and PDF for signature
+report:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{tq}}/.."
+    export DYLD_FALLBACK_LIBRARY_PATH="{{dyld}}"
+    # The qualification venv already has the renderer; otherwise the active one.
+    if [ -x "{{venv}}/bin/python" ]; then py="{{venv}}/bin/python"; else py="python3"; fi
+    "$py" "{{tq}}/tq_report.py"
+
+# Exploratory run against the active environment; verifies tq_config, not a formal record
+check *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{tq}}/.."
+    # An activated venv's pytest if there is one, otherwise the uv project's.
+    if command -v pytest > /dev/null 2>&1; then run=(pytest); else run=(uv run pytest); fi
+    TZ=UTC "${run[@]}" -c "{{tq}}/pytest.ini" "{{tq}}" -v --tb=short "$@"
+
+# Remove the qualification venv and the records of the last run
+clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{tq}}/.."
+    rm -rf "{{venv}}"
+    rm -f tq_console.log tq_pip_freeze.txt tq_evidence.jsonl tq_environment.json \
+          tq_report.md tq_report.pdf

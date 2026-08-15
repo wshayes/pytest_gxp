@@ -207,9 +207,9 @@ a signature block. That is not an acceptable limitation and is Mandatory.
 ## 6. Execution
 
 ```bash
-python -m venv .tq && . .tq/bin/activate
-pip install "pytest-gxp[pdf]==<X.Y.Z>"
-pip freeze > tq_pip_freeze.txt
+uv venv .tq && . .tq/bin/activate
+uv pip install "pytest-gxp[pdf]==<X.Y.Z>"
+uv pip freeze > tq_pip_freeze.txt
 
 export TZ=UTC
 export TQ_PINNED_VERSION=<X.Y.Z>
@@ -217,6 +217,14 @@ export TQ_PINNED_VERSION=<X.Y.Z>
 pytest -c tool_qualification/pytest.ini tool_qualification/ \
        -v --tb=short | tee tq_console.log
 ```
+
+The environment is created with `uv venv` and populated with `uv pip install`
+from the published wheel, not with `uv sync` against a checkout: `uv sync`
+installs the project in editable mode, and TQ-1.2 cannot compute a content hash
+of an editable install. `uv pip freeze` emits the same requirements format as
+`pip freeze`, so `tq_pip_freeze.txt` is unchanged as a record. Where uv is not
+available, `python -m venv` / `pip install` / `pip freeze` are the equivalent
+commands; record which was used on FRM-CSA-03.
 
 `-c tool_qualification/pytest.ini` selects the suite's own configuration. It
 loads the `pytester` plugin the suite requires and isolates the run from any
@@ -231,6 +239,19 @@ pytest -c tool_qualification/pytest.ini tool_qualification/ -m "not gap"
 
 Retain: `tq_console.log`, `tq_evidence.jsonl`, `tq_environment.json`,
 `tq_pip_freeze.txt`.
+
+Each case is registered in `tool_qualification/tq_requirements.py` against the
+intended-use requirement (`TQ-REQ-01` …) it verifies, and the report renders that
+mapping as a traceability matrix. A requirement counts as verified only where
+every case registered against it executed and passed; a case that executes
+without being registered raises a finding, so the register cannot fall behind
+this protocol silently.
+
+The suite ships a `justfile` that runs this procedure — `just start` from
+`tool_qualification/` — and renders the report of §9.4 as `tq_report.md` and
+`tq_report.pdf`, carrying the digest of each retained record. The renderer does
+not import pytest_gxp; the record of the tool's fitness is not produced by the
+tool under qualification. The disposition is left blank for the reviewer.
 
 ## 7. Acceptance criteria
 
