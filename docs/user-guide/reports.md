@@ -394,13 +394,13 @@ All timestamps are UTC ISO 8601 with a `Z` designator (`2026-07-29T14:22:05Z`).
 Install PDF conversion dependencies:
 
 ```bash
-pip install pytest-gxp[pdf]
+uv add --dev "pytest-gxp[pdf]"
 ```
 
 Or install all optional dependencies:
 
 ```bash
-pip install pytest-gxp[all]
+uv add --dev "pytest-gxp[all]"
 ```
 
 ### PDF Features

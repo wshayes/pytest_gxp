@@ -559,7 +559,7 @@ class CSVValidationReport:
         except ImportError as e:
             raise ImportError(
                 f"PDF generation requires 'weasyprint' and 'markdown' packages. "
-                f"Install with: pip install pytest-gxp[pdf]. "
+                f'Install with: uv add --dev "pytest-gxp[pdf]". '
                 f"Original error: {e}"
             ) from e
 

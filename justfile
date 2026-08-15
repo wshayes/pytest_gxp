@@ -7,7 +7,11 @@ default:
 
 # Install the package in development mode with all dev dependencies
 install:
-    pip install -e ".[dev]"
+    @if command -v uv > /dev/null 2>&1; then \
+        uv sync --dev; \
+    else \
+        pip install -e ".[dev]"; \
+    fi
 
 # Install pre-commit hooks
 install-hooks:
@@ -156,8 +160,8 @@ docs-pdf:
         uv run python -c "from pathlib import Path; from pytest_gxp.report import CSVValidationReport; import json; r = CSVValidationReport(); f = Path('examples/gxp_report_files/csv_validation_report.json'); d = json.load(open(f)); r.report_data = d; r.write_pdf(Path('examples/gxp_report_files/csv_validation_report.pdf'))" && \
         echo "PDF generated: examples/gxp_report_files/csv_validation_report.pdf"; \
     else \
-        echo "Error: uv not found. Install weasyprint and markdown:"; \
-        echo "  pip install weasyprint markdown"; \
+        echo "Error: uv not found. Install it (https://docs.astral.sh/uv/) or:"; \
+        echo "  pip install -e '.[pdf]'"; \
         exit 1; \
     fi
 

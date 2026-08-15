@@ -526,7 +526,7 @@ def gxp_evidence(request):
             gxp_evidence.add_image("chart.png", "Results chart")
 
     Note: Pillow is required for text-to-image conversion.
-    Install with: pip install pytest-gxp[evidence]
+    Install with: uv add --dev "pytest-gxp[evidence]" (or pip install "pytest-gxp[evidence]")
     """
     if not request.config.getoption("--gxp", default=False):
         # Return a no-op collector if GxP mode is not enabled

@@ -65,17 +65,18 @@ uv run pytest --gxp \
     --gxp-approver="Robert Johnson"
 ```
 
-### Using pip
+### Installing the plugin from this checkout
 
 1. Install the plugin:
    ```bash
-   pip install -e ..
+   uv sync --dev
    ```
+   (Alternative without uv: `pip install -e ..`)
 
 2. Run pytest with GxP mode:
    ```bash
    cd examples
-   pytest --gxp
+   uv run pytest --gxp
    ```
 
 ### Running with Qualification Type
@@ -106,7 +107,7 @@ After running, check the `gxp_report_files/` directory:
 - `csv_validation_report.csv` - CSV validation report
 - `csv_validation_report.json` - JSON validation report
 - `csv_validation_report.md` - Markdown validation report with approval signatures
-- `csv_validation_report.pdf` - PDF validation report (requires `pip install pytest-gxp[pdf]`)
+- `csv_validation_report.pdf` - PDF validation report (requires `uv add --dev "pytest-gxp[pdf]"`)
 - `requirement_coverage.md` - Requirement coverage summary
 - `evidence_manifest.json` - Evidence metadata
 - `evidence/` - Directory containing captured evidence images

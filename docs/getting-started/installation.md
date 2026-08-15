@@ -5,17 +5,30 @@
 - Python 3.8 or higher
 - pytest 7.0.0 or higher
 
-## Install from PyPI
+## Add to your project
 
 ```bash
-pip install pytest-gxp
+uv add --dev pytest-gxp
 ```
 
-## Install with uv
+This records the dependency in your `pyproject.toml` and pins it in `uv.lock`:
 
-```bash
-uv add pytest-gxp
+```toml
+[dependency-groups]
+dev = [
+    "pytest-gxp>=0.2.0",
+]
 ```
+
+For a validated system, pin the exact version you qualified (`pytest-gxp==0.2.0`)
+and commit `uv.lock` — the lockfile is the reproducible dependency closure your
+qualification record refers to.
+
+??? note "Alternative: pip"
+
+    ```bash
+    pip install pytest-gxp
+    ```
 
 ## Optional Dependencies
 
@@ -24,20 +37,28 @@ Install optional features as needed:
 ### Evidence Capture (text-to-image conversion)
 
 ```bash
-pip install pytest-gxp[evidence]
+uv add --dev "pytest-gxp[evidence]"
 ```
 
 ### PDF Report Generation
 
 ```bash
-pip install pytest-gxp[pdf]
+uv add --dev "pytest-gxp[pdf]"
 ```
 
 ### All Optional Dependencies
 
 ```bash
-pip install pytest-gxp[all]
+uv add --dev "pytest-gxp[all]"
 ```
+
+??? note "Alternative: pip"
+
+    ```bash
+    pip install "pytest-gxp[evidence]"
+    pip install "pytest-gxp[pdf]"
+    pip install "pytest-gxp[all]"
+    ```
 
 ## Development Installation
 
@@ -46,12 +67,6 @@ For development, install with dev dependencies:
 ```bash
 git clone https://github.com/wshayes/pytest_gxp.git
 cd pytest_gxp
-pip install -e ".[dev]"
-```
-
-Or with uv:
-
-```bash
 uv sync --dev
 ```
 
@@ -59,6 +74,14 @@ This will install:
 
 - The plugin in editable mode
 - Development dependencies (pytest, ruff, pre-commit, mkdocs)
+
+Prefix commands with `uv run` to use the project environment, e.g. `uv run pytest`.
+
+??? note "Alternative: pip"
+
+    ```bash
+    pip install -e ".[dev]"
+    ```
 
 ## Verify Installation
 

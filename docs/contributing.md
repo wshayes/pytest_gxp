@@ -12,11 +12,12 @@ Thank you for your interest in contributing to Pytest GxP!
    ```
 3. Install in development mode:
    ```bash
-   pip install -e ".[dev]"
+   uv sync --dev
    ```
+   (Alternative without uv: `pip install -e ".[dev]"`)
 4. Set up pre-commit hooks:
    ```bash
-   pre-commit install
+   uv run pre-commit install
    ```
 
 ## Code Style
@@ -26,16 +27,16 @@ This project uses:
 - **Pre-commit** hooks to enforce code quality
 
 Before committing, ensure:
-- Code is formatted: `ruff format .`
-- Linting passes: `ruff check .`
-- All tests pass: `pytest`
+- Code is formatted: `uv run ruff format .`
+- Linting passes: `uv run ruff check .`
+- All tests pass: `uv run pytest`
 
 ## Documentation
 
 Documentation is built with Material for MkDocs. To build locally:
 
 ```bash
-mkdocs serve
+uv run mkdocs serve
 ```
 
 Then visit `http://127.0.0.1:8000` to view the documentation.
