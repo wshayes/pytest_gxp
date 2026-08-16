@@ -45,7 +45,7 @@ revision of the system under validation, and the record's own status.
     "1 test(s) failed or errored",
     "1 error-severity validation finding(s)"
   ],
-  "generator": { "name": "pytest-gxp", "version": "0.2.0" },
+  "generator": { "name": "pytest-gxp", "version": "0.3.0" },
   "findings_summary": { "errors": 1, "warnings": 2 },
   "source_provenance": {
     "source": "git",

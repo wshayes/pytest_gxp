@@ -87,7 +87,7 @@ or provenance. Read the JSON when you need the full record.
       "1 test(s) failed or errored",
       "1 non-passing test(s) without a deviation reference"
     ],
-    "generator": { "name": "pytest-gxp", "version": "0.2.0" },
+    "generator": { "name": "pytest-gxp", "version": "0.3.0" },
     "findings_summary": { "errors": 1, "warnings": 2 },
     "source_provenance": {
       "source": "git",

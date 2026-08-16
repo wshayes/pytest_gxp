@@ -19,7 +19,7 @@ import os
 # differs, which prevents an accidental qualification of the wrong build.
 # Override per environment with TQ_PINNED_VERSION; CI sets it from the version
 # actually installed from the built wheel.
-PINNED_VERSION: str | None = os.environ.get("TQ_PINNED_VERSION") or "0.2.0"
+PINNED_VERSION: str | None = os.environ.get("TQ_PINNED_VERSION") or "0.3.0"
 
 DISTRIBUTION_NAME = "pytest-gxp"
 IMPORT_NAME = "pytest_gxp"

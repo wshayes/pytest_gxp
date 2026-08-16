@@ -32,7 +32,7 @@ uv add --dev pytest-gxp
 ```
 
 This records the dependency in your `pyproject.toml` and pins it in `uv.lock`.
-For a validated system, pin the qualified version (`pytest-gxp==0.2.0`) and
+For a validated system, pin the qualified version (`pytest-gxp==0.3.0`) and
 commit `uv.lock` — the lockfile is the reproducible dependency closure the
 qualification record refers to.
 
@@ -74,7 +74,7 @@ This installs all development dependencies including:
 This project uses pre-commit to ensure code quality. After installing dev dependencies, set up pre-commit hooks:
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 The pre-commit hooks will:
@@ -85,7 +85,7 @@ The pre-commit hooks will:
 To manually run pre-commit on all files:
 
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ### Documentation
@@ -99,7 +99,7 @@ This project includes documentation built with Material for MkDocs. The document
 To build and serve the documentation locally:
 
 ```bash
-mkdocs serve
+uv run mkdocs serve
 ```
 
 Or using just:
@@ -113,7 +113,7 @@ Visit `http://127.0.0.1:8000` to view the documentation.
 To build static documentation:
 
 ```bash
-mkdocs build
+uv run mkdocs build
 ```
 
 #### Deployment
@@ -565,15 +565,15 @@ qualification package is an artifact you obtain and retain deliberately:
 
 ```bash
 # uv has no `download` equivalent, so pip fetches the sdist
-pip download --no-binary :all: --no-deps pytest-gxp==0.2.0 -d ./tq-download
-tar xzf ./tq-download/pytest_gxp-0.2.0.tar.gz && cd pytest_gxp-0.2.0
+pip download --no-binary :all: --no-deps pytest-gxp==0.3.0 -d ./tq-download
+tar xzf ./tq-download/pytest_gxp-0.3.0.tar.gz && cd pytest_gxp-0.3.0
 
 # Qualify the published wheel in a fresh environment — not an editable install
 uv venv .tq && . .tq/bin/activate
-uv pip install "pytest-gxp[pdf]==0.2.0"
+uv pip install "pytest-gxp[pdf]==0.3.0"
 uv pip freeze > tq_pip_freeze.txt
 
-TZ=UTC TQ_PINNED_VERSION=0.2.0 \
+TZ=UTC TQ_PINNED_VERSION=0.3.0 \
   pytest -c tool_qualification/pytest.ini tool_qualification/ -m "not gap" -v
 ```
 

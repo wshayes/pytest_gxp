@@ -61,18 +61,18 @@ and retain deliberately.
 ```bash
 # Option 1 — download the sdist for the exact version you are qualifying.
 # uv has no `download` equivalent, so pip is used for this one step.
-pip download --no-binary :all: --no-deps pytest-gxp==0.2.0 -d ./tq-download
-tar xzf ./tq-download/pytest_gxp-0.2.0.tar.gz
-cd pytest_gxp-0.2.0
+pip download --no-binary :all: --no-deps pytest-gxp==0.3.0 -d ./tq-download
+tar xzf ./tq-download/pytest_gxp-0.3.0.tar.gz
+cd pytest_gxp-0.3.0
 ls tool_qualification/
 ```
 
 ```bash
 # Option 2 — the tagged GitHub release tarball for the same version.
 # Use the tag name shown on the release page for the version you are qualifying.
-curl -L -o pytest_gxp-0.2.0.tar.gz \
-  https://github.com/wshayes/pytest_gxp/archive/refs/tags/v0.2.0.tar.gz
-tar xzf pytest_gxp-0.2.0.tar.gz
+curl -L -o pytest_gxp-0.3.0.tar.gz \
+  https://github.com/wshayes/pytest_gxp/archive/refs/tags/v0.3.0.tar.gz
+tar xzf pytest_gxp-0.3.0.tar.gz
 ```
 
 Retain the downloaded archive and its SHA-256 with the qualification record.
@@ -101,12 +101,12 @@ for the recipes. The equivalent commands, run by hand:
 ```bash
 # Fresh, isolated environment
 uv venv .tq && . .tq/bin/activate
-uv pip install "pytest-gxp[pdf]==0.2.0"
+uv pip install "pytest-gxp[pdf]==0.3.0"
 uv pip freeze > tq_pip_freeze.txt
 
 # Declare what is being qualified, and pin the timezone
 export TZ=UTC
-export TQ_PINNED_VERSION=0.2.0
+export TQ_PINNED_VERSION=0.3.0
 
 pytest -c tool_qualification/pytest.ini tool_qualification/ \
        -m "not gap" -v --tb=short | tee tq_console.log
@@ -116,7 +116,7 @@ pytest -c tool_qualification/pytest.ini tool_qualification/ \
 
     ```bash
     python -m venv .tq && . .tq/bin/activate
-    pip install "pytest-gxp[pdf]==0.2.0"
+    pip install "pytest-gxp[pdf]==0.3.0"
     pip freeze > tq_pip_freeze.txt
     ```
 
@@ -197,7 +197,7 @@ Cases carry one of two markers, and the two are dispositioned differently.
 | **Mandatory** | `mandatory` | Must pass. Any failure means the version is **not qualified**. Do not use it, and review any record already produced with it. |
 | **Gap** | `gap` | An accepted limitation whose expected outcome is recorded in the protocol §8, with a named compensating procedural control. A gap case that *changes state* is a signal to investigate and retire or retain the control by decision — not something to ignore. |
 
-As of version 0.2.0 the gap set is empty — every case in the register is
+As of version 0.3.0 the gap set is empty — every case in the register is
 mandatory, and the two remaining accepted limitations are documented facts rather
 than failing cases. The `-m "not gap"` gate expression is retained regardless, so
 that a future limitation cannot be introduced without the gate acknowledging it.
