@@ -54,7 +54,7 @@ Capture a directory listing as an image.
 
 **Returns**: `EvidenceItem`
 
-**Requires**: `pip install pytest-gxp[evidence]` (Pillow)
+**Requires**: `uv add --dev "pytest-gxp[evidence]"` (Pillow)
 
 #### `capture_command_output(text: str, description: str, command: str = None) -> EvidenceItem`
 
@@ -68,7 +68,7 @@ Capture command output as an image.
 
 **Returns**: `EvidenceItem`
 
-**Requires**: `pip install pytest-gxp[evidence]` (Pillow)
+**Requires**: `uv add --dev "pytest-gxp[evidence]"` (Pillow)
 
 #### `add_image(image_path, description: str) -> EvidenceItem`
 

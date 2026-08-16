@@ -34,7 +34,7 @@ just docs-pdf
 
 This requires the PDF dependencies:
 ```bash
-pip install weasyprint markdown
+uv sync --dev          # they are in the project's dev dependency group
 ```
 
 ## Format Documentation

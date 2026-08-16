@@ -146,7 +146,7 @@ The `--gxp-output-formats` option accepts a comma-separated list of formats:
 - `csv` - CSV files for spreadsheet applications
 - `json` - JSON files for programmatic processing
 - `md` - Markdown files for documentation
-- `pdf` - PDF files for distribution (requires `pip install pytest-gxp[pdf]`)
+- `pdf` - PDF files for distribution (requires `uv add --dev "pytest-gxp[pdf]"`)
 
 By default, all formats are generated. To generate only specific formats:
 

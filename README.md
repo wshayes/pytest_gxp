@@ -28,26 +28,39 @@ Release notes are in [CHANGELOG.md](CHANGELOG.md).
 ## Installation
 
 ```bash
-pip install pytest-gxp
+uv add --dev pytest-gxp
 ```
 
+This records the dependency in your `pyproject.toml` and pins it in `uv.lock`.
+For a validated system, pin the qualified version (`pytest-gxp==0.3.0`) and
+commit `uv.lock` — the lockfile is the reproducible dependency closure the
+qualification record refers to.
+
+<details>
+<summary>Alternative: pip</summary>
+
 ```bash
-uv add pytest-gxp
+pip install pytest-gxp
 ```
+</details>
 
 ### Development Installation
 
 For development, install with dev dependencies:
 
-**Using pip:**
-```bash
-pip install -e ".[dev]"
-```
-
-**Using uv:**
 ```bash
 uv sync --dev
 ```
+
+Prefix commands with `uv run` to use the project environment, e.g. `uv run pytest`.
+
+<details>
+<summary>Alternative: pip</summary>
+
+```bash
+pip install -e ".[dev]"
+```
+</details>
 
 This installs all development dependencies including:
 - pytest and pytest-cov for testing
@@ -61,7 +74,7 @@ This installs all development dependencies including:
 This project uses pre-commit to ensure code quality. After installing dev dependencies, set up pre-commit hooks:
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 The pre-commit hooks will:
@@ -72,7 +85,7 @@ The pre-commit hooks will:
 To manually run pre-commit on all files:
 
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ### Documentation
@@ -86,7 +99,7 @@ This project includes documentation built with Material for MkDocs. The document
 To build and serve the documentation locally:
 
 ```bash
-mkdocs serve
+uv run mkdocs serve
 ```
 
 Or using just:
@@ -100,7 +113,7 @@ Visit `http://127.0.0.1:8000` to view the documentation.
 To build static documentation:
 
 ```bash
-mkdocs build
+uv run mkdocs build
 ```
 
 #### Deployment
@@ -348,7 +361,7 @@ register, and evidence. Marked `PROVISIONAL` when the run was not clean.
 - `csv_validation_report.csv`
 - `csv_validation_report.json`
 - `csv_validation_report.md`
-- `csv_validation_report.pdf` (requires `pip install pytest-gxp[pdf]`)
+- `csv_validation_report.pdf` (requires `uv add --dev "pytest-gxp[pdf]"`)
 
 ### Requirement Coverage Report
 Details which requirements have tests and their verification status.
@@ -440,13 +453,13 @@ The plugin supports capturing objective evidence during tests for GxP validation
 For evidence capture with text-to-image conversion:
 
 ```bash
-pip install pytest-gxp[evidence]
+uv add --dev "pytest-gxp[evidence]"
 ```
 
 Or install all optional dependencies:
 
 ```bash
-pip install pytest-gxp[all]
+uv add --dev "pytest-gxp[all]"
 ```
 
 ### Using the Evidence Fixture
@@ -551,10 +564,16 @@ under `tool_qualification/` — deliberately excluded from the wheel, so a
 qualification package is an artifact you obtain and retain deliberately:
 
 ```bash
-pip download --no-binary :all: --no-deps pytest-gxp==0.2.0 -d ./tq-download
-tar xzf ./tq-download/pytest_gxp-0.2.0.tar.gz && cd pytest_gxp-0.2.0
+# uv has no `download` equivalent, so pip fetches the sdist
+pip download --no-binary :all: --no-deps pytest-gxp==0.3.0 -d ./tq-download
+tar xzf ./tq-download/pytest_gxp-0.3.0.tar.gz && cd pytest_gxp-0.3.0
 
-TZ=UTC TQ_PINNED_VERSION=0.2.0 \
+# Qualify the published wheel in a fresh environment — not an editable install
+uv venv .tq && . .tq/bin/activate
+uv pip install "pytest-gxp[pdf]==0.3.0"
+uv pip freeze > tq_pip_freeze.txt
+
+TZ=UTC TQ_PINNED_VERSION=0.3.0 \
   pytest -c tool_qualification/pytest.ini tool_qualification/ -m "not gap" -v
 ```
 

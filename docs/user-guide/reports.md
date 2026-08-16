@@ -87,7 +87,7 @@ or provenance. Read the JSON when you need the full record.
       "1 test(s) failed or errored",
       "1 non-passing test(s) without a deviation reference"
     ],
-    "generator": { "name": "pytest-gxp", "version": "0.2.0" },
+    "generator": { "name": "pytest-gxp", "version": "0.3.0" },
     "findings_summary": { "errors": 1, "warnings": 2 },
     "source_provenance": {
       "source": "git",
@@ -394,13 +394,13 @@ All timestamps are UTC ISO 8601 with a `Z` designator (`2026-07-29T14:22:05Z`).
 Install PDF conversion dependencies:
 
 ```bash
-pip install pytest-gxp[pdf]
+uv add --dev "pytest-gxp[pdf]"
 ```
 
 Or install all optional dependencies:
 
 ```bash
-pip install pytest-gxp[all]
+uv add --dev "pytest-gxp[all]"
 ```
 
 ### PDF Features

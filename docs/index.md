@@ -26,11 +26,11 @@ Pytest GxP is a pytest plugin that supports **GAMP5 GxP product Computer System 
 ## Quick Start
 
 ```bash
-# Install the plugin
-pip install pytest-gxp
+# Add the plugin to your project
+uv add --dev pytest-gxp
 
 # Run with GxP mode
-pytest --gxp
+uv run pytest --gxp
 ```
 
 ## Workflow

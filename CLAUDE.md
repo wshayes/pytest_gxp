@@ -9,10 +9,10 @@ pytest-gxp is a Pytest plugin for GAMP5 GxP Computer System Validation (CSV). It
 ## Common Commands
 
 ```bash
-# Install for development
-pip install -e ".[dev]"
-# or with uv
+# Install for development (uv is the default; pip is the fallback)
 uv sync --dev
+# or without uv
+pip install -e ".[dev]"
 
 # Run all tests
 pytest

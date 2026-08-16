@@ -5,9 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-08-16
+
+This release closes the loop on the tool qualification: the suite is now
+runnable with one command and renders a Tool Qualification Report that can be
+signed before an application validation is run with the tool. It also tightens
+the Tier 1 evidence gate, which is a behaviour change for suites relying on a
+session record to satisfy it.
 
 ### Added
+
+- **Runnable qualification suite.** `tool_qualification/justfile` provides
+  `just start` (fresh venv, install of the pinned wheel, dependency freeze,
+  pass/fail gate, report), `just report`, `just check`, and `just clean`. The
+  install comes from a locally built wheel when `dist/` holds one and from PyPI
+  otherwise — never editable, which TQ-1.2 cannot content-hash.
+- **Tool Qualification Report.** `tool_qualification/tq_report.py` renders the
+  records of a run as `tq_report.md` and a `tq_report.pdf` for signature: intended
+  use, requirements traceability matrix, every case with its description and
+  outcome, the SHA-256 of each attached record, known limitations, and an approval
+  block. It is marked `PROVISIONAL — DRAFT RECORD. NOT FOR SIGNATURE.` whenever the
+  run carries a finding, and the disposition is left blank for the reviewer. The
+  renderer does not import pytest_gxp: the record of a tool's fitness is not
+  produced by the tool under qualification.
+- **Intended-use requirements register.** `tool_qualification/tq_requirements.py`
+  registers what the tool is relied upon for (`TQ-REQ-01` …) with a risk rating and
+  the cases verifying each, so the report carries a traceability matrix rather than
+  an unjustified list of cases. A requirement counts as verified only where every
+  registered case executed and passed.
+- **Skip reasons in the evidence record.** A qualification case that does not
+  execute now records its reason in `tq_evidence.jsonl`, not only in the console log.
 
 - **`high-risk-evidence-unscripted-only` finding.** The high-risk evidence gate
   previously counted evidence entries against a requirement without regard to
@@ -26,6 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- uv is now the documented default for installation and development, with pip
+  kept as an alternative. Installation shows `uv add --dev pytest-gxp` with the
+  resulting `pyproject.toml` and `uv.lock`, since for a validated system the
+  lockfile is the reproducible dependency closure the qualification record
+  refers to.
 - Removed the `Requirement-Hash` procedure step from the validation templates.
   It was documented but never implemented — no parser support, no CLI, and no
   column in the traceability matrix, despite the assurance strategy stating the

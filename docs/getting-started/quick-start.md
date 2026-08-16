@@ -70,7 +70,7 @@ After running tests, check the generated reports in `gxp_report_files/`:
 - `csv_validation_report.csv` - CSV format
 - `csv_validation_report.json` - JSON format
 - `csv_validation_report.md` - Markdown format
-- `csv_validation_report.pdf` - PDF format (requires `pip install pytest-gxp[pdf]`)
+- `csv_validation_report.pdf` - PDF format (requires `uv add --dev "pytest-gxp[pdf]"`)
 
 ### Coverage Report
 - `requirement_coverage.md` - Coverage summary
@@ -95,7 +95,7 @@ def test_user_login(gxp_evidence):
 Install evidence dependencies:
 
 ```bash
-pip install pytest-gxp[evidence]
+uv add --dev "pytest-gxp[evidence]"
 ```
 
 ## Next Steps

@@ -54,24 +54,25 @@ existence of the upstream project as supplier assurance.
 ## Obtaining the qualification suite for a pinned version
 
 The suite ships in the **source distribution**, under `tool_qualification/`. It
-is deliberately excluded from the wheel, so `pip install pytest-gxp` does not
+is deliberately excluded from the wheel, so `uv add pytest-gxp` does not
 give you the suite — the qualification package is a release artifact you obtain
 and retain deliberately.
 
 ```bash
-# Option 1 — download the sdist for the exact version you are qualifying
-pip download --no-binary :all: --no-deps pytest-gxp==0.2.0 -d ./tq-download
-tar xzf ./tq-download/pytest_gxp-0.2.0.tar.gz
-cd pytest_gxp-0.2.0
+# Option 1 — download the sdist for the exact version you are qualifying.
+# uv has no `download` equivalent, so pip is used for this one step.
+pip download --no-binary :all: --no-deps pytest-gxp==0.3.0 -d ./tq-download
+tar xzf ./tq-download/pytest_gxp-0.3.0.tar.gz
+cd pytest_gxp-0.3.0
 ls tool_qualification/
 ```
 
 ```bash
 # Option 2 — the tagged GitHub release tarball for the same version.
 # Use the tag name shown on the release page for the version you are qualifying.
-curl -L -o pytest_gxp-0.2.0.tar.gz \
-  https://github.com/wshayes/pytest_gxp/archive/refs/tags/v0.2.0.tar.gz
-tar xzf pytest_gxp-0.2.0.tar.gz
+curl -L -o pytest_gxp-0.3.0.tar.gz \
+  https://github.com/wshayes/pytest_gxp/archive/refs/tags/v0.3.0.tar.gz
+tar xzf pytest_gxp-0.3.0.tar.gz
 ```
 
 Retain the downloaded archive and its SHA-256 with the qualification record.
@@ -85,19 +86,45 @@ will use. Install from a built wheel or the sdist — **not** an editable or pat
 install — because one of the mandatory cases computes a content hash of the
 installed distribution, and an editable install has no stable file inventory.
 
+The suite ships a `justfile` that performs this whole procedure and renders the
+signable report at the end:
+
+```bash
+cd tool_qualification
+just          # list the recipes
+just start    # fresh environment, pinned wheel, gate, report
+```
+
+See [`tool_qualification/README.md`](https://github.com/wshayes/pytest_gxp/blob/main/tool_qualification/README.md)
+for the recipes. The equivalent commands, run by hand:
+
 ```bash
 # Fresh, isolated environment
-python -m venv .tq && . .tq/bin/activate
-pip install "pytest-gxp[pdf]==0.2.0"
-pip freeze > tq_pip_freeze.txt
+uv venv .tq && . .tq/bin/activate
+uv pip install "pytest-gxp[pdf]==0.3.0"
+uv pip freeze > tq_pip_freeze.txt
 
 # Declare what is being qualified, and pin the timezone
 export TZ=UTC
-export TQ_PINNED_VERSION=0.2.0
+export TQ_PINNED_VERSION=0.3.0
 
 pytest -c tool_qualification/pytest.ini tool_qualification/ \
        -m "not gap" -v --tb=short | tee tq_console.log
 ```
+
+??? note "Alternative: pip"
+
+    ```bash
+    python -m venv .tq && . .tq/bin/activate
+    pip install "pytest-gxp[pdf]==0.3.0"
+    pip freeze > tq_pip_freeze.txt
+    ```
+
+`uv venv` + `uv pip install` is used rather than `uv sync`: the qualification
+must run against the published wheel, and `uv sync` against a checkout installs
+the project in editable mode, which makes the content-hash case (TQ-1.2) skip.
+`uv pip freeze` emits the same requirements format as `pip freeze`, so
+`tq_pip_freeze.txt` remains the dependency-closure record named on the forms.
 
 `-c tool_qualification/pytest.ini` selects the suite's own configuration. This
 both loads the `pytester` plugin the suite needs and isolates the run from any
@@ -132,9 +159,30 @@ pytest -c tool_qualification/pytest.ini tool_qualification/ -m gap
 | `tq_environment.json` | Installed version, declared pin, Python / pytest versions, `TZ`, platform, suite commit and tag, dirty-tree flag |
 | `tq_console.log` | Full execution record |
 | `tq_pip_freeze.txt` | Complete dependency closure |
+| `tq_report.md` / `tq_report.pdf` | The Tool Qualification Report rendered from the four records above, with the digest of each; the PDF is the copy that is signed |
 
-All four attach to the tool qualification report and to your tool qualification
-checklist (FRM-CSA-03 in the [forms](forms.md) templates).
+The first four attach to the tool qualification report and to your tool
+qualification checklist (FRM-CSA-03 in the [forms](forms.md) templates).
+
+The report is written to be signed on its own, before any application
+validation is run with the tool. It carries the intended use being qualified, a
+register of intended-use requirements (`TQ-REQ-01` …) with a traceability matrix
+to the cases that verify each, every case with its description and outcome, the
+known limitations of the version, and the approval block.
+
+That register — held in `tool_qualification/tq_requirements.py` — takes the place
+of a Functional Specification for the tool. Specifying software you did not
+author and then testing your own specification of it adds a document without
+adding assurance; what the qualification needs is a statement of what must hold
+for the records to be relied upon, and evidence that each such statement was
+tested. Where your QMS requires a controlled requirements document for tools,
+lift the statements into it verbatim; the identifiers are stable.
+
+The report states the run's outcome as fact but leaves the **disposition**
+blank: whether the version is qualified is the reviewer's judgement. It is
+marked `PROVISIONAL — DRAFT RECORD. NOT FOR SIGNATURE.` whenever the run carries
+a finding — a case that did not execute, a pin disagreement, a dirty working
+tree, or a missing record.
 
 A fresh `tq_evidence.jsonl` is written per run, so an abandoned run does not
 silently merge into the record. Override the paths with `TQ_EVIDENCE_FILE` and
@@ -149,7 +197,7 @@ Cases carry one of two markers, and the two are dispositioned differently.
 | **Mandatory** | `mandatory` | Must pass. Any failure means the version is **not qualified**. Do not use it, and review any record already produced with it. |
 | **Gap** | `gap` | An accepted limitation whose expected outcome is recorded in the protocol §8, with a named compensating procedural control. A gap case that *changes state* is a signal to investigate and retire or retain the control by decision — not something to ignore. |
 
-As of version 0.2.0 the gap set is empty — every case in the register is
+As of version 0.3.0 the gap set is empty — every case in the register is
 mandatory, and the two remaining accepted limitations are documented facts rather
 than failing cases. The `-m "not gap"` gate expression is retained regardless, so
 that a future limitation cannot be introduced without the gate acknowledging it.

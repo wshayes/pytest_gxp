@@ -59,7 +59,7 @@ Write report in PDF format with optional evidence.
 - `output_path`: Path for PDF output
 - `evidence_items`: Optional list of `EvidenceItem` objects
 
-**Requires**: `pip install pytest-gxp[pdf]`
+**Requires**: `uv add --dev "pytest-gxp[pdf]"`
 
 ## Example
 

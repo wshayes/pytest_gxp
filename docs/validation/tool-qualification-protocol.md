@@ -83,7 +83,7 @@ must pass for the version to be used in qualification activity — or **Gap
 assessment**, whose expected outcome is recorded in §8 and whose *change of
 state* is the signal to investigate.
 
-As of version 0.2.0 every case in the register is Mandatory. The gap-assessment
+As of version 0.3.0 every case in the register is Mandatory. The gap-assessment
 class is retained in the protocol and in the suite's marker set because the
 class is a permanent feature of the method, not because it is currently
 populated; see §8.
@@ -207,9 +207,9 @@ a signature block. That is not an acceptable limitation and is Mandatory.
 ## 6. Execution
 
 ```bash
-python -m venv .tq && . .tq/bin/activate
-pip install "pytest-gxp[pdf]==<X.Y.Z>"
-pip freeze > tq_pip_freeze.txt
+uv venv .tq && . .tq/bin/activate
+uv pip install "pytest-gxp[pdf]==<X.Y.Z>"
+uv pip freeze > tq_pip_freeze.txt
 
 export TZ=UTC
 export TQ_PINNED_VERSION=<X.Y.Z>
@@ -217,6 +217,14 @@ export TQ_PINNED_VERSION=<X.Y.Z>
 pytest -c tool_qualification/pytest.ini tool_qualification/ \
        -v --tb=short | tee tq_console.log
 ```
+
+The environment is created with `uv venv` and populated with `uv pip install`
+from the published wheel, not with `uv sync` against a checkout: `uv sync`
+installs the project in editable mode, and TQ-1.2 cannot compute a content hash
+of an editable install. `uv pip freeze` emits the same requirements format as
+`pip freeze`, so `tq_pip_freeze.txt` is unchanged as a record. Where uv is not
+available, `python -m venv` / `pip install` / `pip freeze` are the equivalent
+commands; record which was used on FRM-CSA-03.
 
 `-c tool_qualification/pytest.ini` selects the suite's own configuration. It
 loads the `pytester` plugin the suite requires and isolates the run from any
@@ -231,6 +239,19 @@ pytest -c tool_qualification/pytest.ini tool_qualification/ -m "not gap"
 
 Retain: `tq_console.log`, `tq_evidence.jsonl`, `tq_environment.json`,
 `tq_pip_freeze.txt`.
+
+Each case is registered in `tool_qualification/tq_requirements.py` against the
+intended-use requirement (`TQ-REQ-01` …) it verifies, and the report renders that
+mapping as a traceability matrix. A requirement counts as verified only where
+every case registered against it executed and passed; a case that executes
+without being registered raises a finding, so the register cannot fall behind
+this protocol silently.
+
+The suite ships a `justfile` that runs this procedure — `just start` from
+`tool_qualification/` — and renders the report of §9.4 as `tq_report.md` and
+`tq_report.pdf`, carrying the digest of each retained record. The renderer does
+not import pytest_gxp; the record of the tool's fitness is not produced by the
+tool under qualification. The disposition is left blank for the reviewer.
 
 ## 7. Acceptance criteria
 
@@ -251,7 +272,7 @@ remediate the tool and re-execute this protocol in full.
 ## 8. Accepted limitations and compensating controls
 
 To be completed at execution and carried forward in the tool register. Expected
-state for version 0.2.0:
+state for version 0.3.0:
 
 | Ref | Finding | Compensating control | Owner |
 |---|---|---|---|
@@ -261,7 +282,7 @@ state for version 0.2.0:
 Neither entry has a failing automated case. TQ-7.3 is a Mandatory case that
 passes by design in order to place the limitation on the record as fact; PDF-1 is
 a scope statement on TQ-7.8. The `gap` marker set is consequently empty for
-version 0.2.0, and the gate expression `-m "not gap"` selects the whole suite.
+version 0.3.0, and the gate expression `-m "not gap"` selects the whole suite.
 
 Where the tool author is a member of your organisation and independent review
 per §7 criterion 5 cannot be arranged, add a third row recording the
@@ -278,15 +299,15 @@ state changes are investigated.
 
 | Ref | Former finding | Retired compensating control | Status |
 |---|---|---|---|
-| TQ-1.6 | No risk-tier marker | Tier carried on FRM-CSA-04 only; evidence gate applied by an external post-run script | Closed in 0.2.0 — `@pytest.mark.gxp_risk(...)` and a `Risk Tier` matrix column |
-| TQ-2.6 | Duplicate requirement IDs not detected | Manual uniqueness check on requirement IDs at protocol freeze | Closed in 0.2.0 — `duplicate-requirement-id` finding |
-| TQ-2.7 | Malformed headings may be silently dropped | Authored-vs-parsed requirement count reconciliation | Closed in 0.2.0 — `malformed-requirement-heading` finding |
-| TQ-3.5 | Orphan requirement references not flagged | Bidirectional reconciliation at review; pre-commit check of marker IDs against parsed spec IDs | Closed in 0.2.0 — `unknown-requirement-ref` finding |
-| TQ-4.9 | No deviation reference field in the record | References recorded on the review form only; no signature routing while any reference is missing | Closed in 0.2.0 — `--gxp-deviations` and a `deviation_ref` field on every record entry |
-| TQ-4.10 | Report not marked provisional on failure | Review precedes signature as the only barrier | Closed in 0.2.0 — `report_metadata.status` of `PROVISIONAL` / `FINAL` with an in-document banner |
-| TQ-7.6 | Timestamps not timezone-qualified | `TZ=UTC` enforced in the execution environment; timezone recorded on FRM-CSA-01 | Closed in 0.2.0 — all emitted timestamps are UTC with an explicit designator |
-| TQ-7.7 | No source provenance in the record | Tag and commit SHA recorded on the readiness checklist and reconciled at review | Closed in 0.2.0 — `source_provenance` in report metadata (commit, tag, dirty flag) |
-| TQ-7.8 | Output not reproducible | Artifact hash manifest generated manually post-run, pre-review | Closed in 0.2.0 — deterministic ordering across JSON / CSV / Markdown, and `artifact_manifest.sha256` written by the tool |
+| TQ-1.6 | No risk-tier marker | Tier carried on FRM-CSA-04 only; evidence gate applied by an external post-run script | Closed in 0.3.0 — `@pytest.mark.gxp_risk(...)` and a `Risk Tier` matrix column |
+| TQ-2.6 | Duplicate requirement IDs not detected | Manual uniqueness check on requirement IDs at protocol freeze | Closed in 0.3.0 — `duplicate-requirement-id` finding |
+| TQ-2.7 | Malformed headings may be silently dropped | Authored-vs-parsed requirement count reconciliation | Closed in 0.3.0 — `malformed-requirement-heading` finding |
+| TQ-3.5 | Orphan requirement references not flagged | Bidirectional reconciliation at review; pre-commit check of marker IDs against parsed spec IDs | Closed in 0.3.0 — `unknown-requirement-ref` finding |
+| TQ-4.9 | No deviation reference field in the record | References recorded on the review form only; no signature routing while any reference is missing | Closed in 0.3.0 — `--gxp-deviations` and a `deviation_ref` field on every record entry |
+| TQ-4.10 | Report not marked provisional on failure | Review precedes signature as the only barrier | Closed in 0.3.0 — `report_metadata.status` of `PROVISIONAL` / `FINAL` with an in-document banner |
+| TQ-7.6 | Timestamps not timezone-qualified | `TZ=UTC` enforced in the execution environment; timezone recorded on FRM-CSA-01 | Closed in 0.3.0 — all emitted timestamps are UTC with an explicit designator |
+| TQ-7.7 | No source provenance in the record | Tag and commit SHA recorded on the readiness checklist and reconciled at review | Closed in 0.3.0 — `source_provenance` in report metadata (commit, tag, dirty flag) |
+| TQ-7.8 | Output not reproducible | Artifact hash manifest generated manually post-run, pre-review | Closed in 0.3.0 — deterministic ordering across JSON / CSV / Markdown, and `artifact_manifest.sha256` written by the tool |
 
 Setting `TZ=UTC` and recording the tag and commit on the readiness checklist
 remain good practice even though the tool no longer depends on them; retiring a

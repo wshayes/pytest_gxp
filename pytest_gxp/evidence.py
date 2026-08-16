@@ -75,7 +75,8 @@ def text_to_image(
     """
     if not PILLOW_AVAILABLE:
         raise ImportError(
-            "Pillow is required for text_to_image. Install with: pip install pytest-gxp[evidence]"
+            "Pillow is required for text_to_image. "
+            'Install with: uv add --dev "pytest-gxp[evidence]"'
         )
 
     output_path = Path(output_path)

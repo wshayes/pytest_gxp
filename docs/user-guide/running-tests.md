@@ -91,7 +91,7 @@ Use the `gxp_evidence` fixture to capture objective evidence during tests. Evide
 For evidence capture with text-to-image conversion:
 
 ```bash
-pip install pytest-gxp[evidence]
+uv add --dev "pytest-gxp[evidence]"
 ```
 
 ### Using the Evidence Fixture
@@ -187,7 +187,7 @@ After running tests, check the generated reports in your report directory:
 - `csv_validation_report.csv` - CSV format
 - `csv_validation_report.json` - JSON format
 - `csv_validation_report.md` - Markdown format
-- `csv_validation_report.pdf` - PDF format (requires `pip install pytest-gxp[pdf]`)
+- `csv_validation_report.pdf` - PDF format (requires `uv add --dev "pytest-gxp[pdf]"`)
 
 ### Requirement Coverage
 - `requirement_coverage.md` - Coverage summary
